@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     initialScale: 1,
     maximumScale: 1,
     // PWAの全画面表示に対応
-    interactiveWidget: 'resizes-visual',
+    //interactiveWidget: 'resizes-visual',
   },
   // ★ PWA設定: ここまで
 };
