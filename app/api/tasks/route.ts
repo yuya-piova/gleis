@@ -3,7 +3,7 @@ import {
   GetPageResponse,
   QueryDatabaseParameters,
   QueryDatabaseResponse,
-} from '@notionhq/client/build/src/api-endpoints'; // v2.xの型パスを維持
+} from '@notionhq/client/build/src/api-endpoints';
 import { NextResponse } from 'next/server';
 
 // 【重要】型ガードを自前で定義し、エラーを回避
