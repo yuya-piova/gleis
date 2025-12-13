@@ -10,14 +10,13 @@ const nextConfig = {
   // PWAの設定を適用
   ...withPWA({
     reactStrictMode: true,
-  }),
 
-  // Dockerでの利用やVercelでの互換性向上のためのオプション
-  compiler: {
-    // Turbopackやその他の環境で警告が出ないように設定
-    removeConsole: process.env.NODE_ENV === 'production',
-  },
+    // ★重要: Turbopackのエラーを回避するため、webpack設定を空の関数として渡す
+    // next-pwaの内部で使われるwebpack設定を上書きし、Turbopackのチェックを回避する
+    webpack: (config, options) => {
+      return config;
+    },
+  }),
 };
 
-// 最終的なエクスポート
 module.exports = nextConfig;
