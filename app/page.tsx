@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   format,
   startOfWeek,
@@ -29,10 +29,16 @@ export default function TaskDashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
-  const [filter, setFilter] = useState<TaskFilter>('All');
+  const [filter, setFilter] = useState<TaskFilter>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('wocheFilter') as TaskFilter) || 'All';
+    }
+    return 'All';
+  });
   const [popupTask, setPopupTask] = useState<PopupState>(null);
-  // ★ 処理中のタスクIDを保持するステート（ローディング表示用）
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  const todayRef = useRef<HTMLDivElement>(null);
 
   // 今日の日付と、今週の月曜日を取得
   const today = new Date();
@@ -73,6 +79,11 @@ export default function TaskDashboard() {
       clearInterval(poller);
     };
   }, []);
+
+  useEffect(() => {
+    // filter の値が変更されたら localStorage に保存
+    localStorage.setItem('wocheFilter', filter);
+  }, [filter]); // 依存配列に [filter] を指定
 
   // ★ 完了処理（ローディング表示とNotion API連携）
   const handleComplete = async (id: string) => {
@@ -326,6 +337,21 @@ export default function TaskDashboard() {
             >
               Work Only
             </button>
+            <button
+              onClick={() => {
+                if (todayRef.current) {
+                  // スクロール可能な親要素を取得し、そこにスクロール処理を適用
+                  const parent = todayRef.current.closest('main');
+                  if (parent) {
+                    parent.scrollLeft =
+                      todayRef.current.offsetLeft - parent.offsetWidth / 2;
+                  }
+                }
+              }}
+              className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-full text-sm font-semibold transition"
+            >
+              Today
+            </button>
           </div>
         </div>
 
@@ -368,6 +394,7 @@ export default function TaskDashboard() {
             return (
               <div
                 key={day.toISOString()}
+                ref={isToday ? todayRef : null}
                 className={`flex-none w-full md:w-72 flex flex-col h-auto md:h-full relative ${
                   isToday ? 'bg-blue-900/10' : ''
                 }`}

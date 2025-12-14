@@ -44,10 +44,20 @@ export async function GET() {
   const queryParams: QueryDatabaseParameters = {
     database_id: databaseId,
     filter: {
-      property: 'State',
-      status: {
-        does_not_equal: 'Done',
-      },
+      and: [
+        {
+          property: 'State',
+          status: {
+            does_not_equal: 'Canceled',
+          },
+        },
+        {
+          property: 'State',
+          status: {
+            does_not_equal: 'Done',
+          },
+        },
+      ],
     } as any,
     sorts: [
       {

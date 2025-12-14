@@ -4,6 +4,7 @@
   "description": "Notionと連携したタスクダッシュボード",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["fullscreen"],
   "orientation": "any",
   "theme_color": "#171717",
   "background_color": "#171717",
