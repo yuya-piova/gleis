@@ -148,7 +148,35 @@ export default function TaskDashboard() {
       setProcessingId(null); // 処理終了
     }
   };
+  const handleUpdateTask = async (
+    id: string,
+    updates: { status?: string; date?: string | null }
+  ) => {
+    if (processingId) return;
 
+    setProcessingId(id);
+
+    try {
+      const res = await fetch('/api/update-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      });
+
+      if (!res.ok) {
+        throw new Error('タスクの更新に失敗しました');
+      }
+
+      // 更新成功後、タスクリストを再取得してUIをリフレッシュ
+      setPopupTask(null); // ポップアップを閉じる
+      await fetchTasks();
+    } catch (e) {
+      console.error(e);
+      alert('タスクの更新処理に失敗しました。');
+    } finally {
+      setProcessingId(null);
+    }
+  };
   // ★ フィルタリングロジック
   const filterTasksByCat = (tasksToFilter: Task[]) => {
     if (filter === 'All') {
@@ -194,7 +222,6 @@ export default function TaskDashboard() {
     };
     const style = colors[task.theme] || colors.gray;
 
-    // ★ Notionアプリで開くためのURLスキーム
     const notionAppUrl = task.url.replace(
       'https://www.notion.so/',
       'notion://'
@@ -203,28 +230,15 @@ export default function TaskDashboard() {
 
     return (
       <div
-        className={`bg-neutral-800 p-4 rounded-lg border-l-4 ${style.bg} shadow-sm hover:bg-neutral-700 transition relative group`}
+        className={`bg-neutral-800 p-3 rounded-lg border-l-4 ${style.bg} shadow-sm hover:bg-neutral-700 transition relative group`}
       >
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex gap-1 flex-wrap">
-            {/* Cat Badge */}
-            <span
-              className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded border ${style.badge}`}
-            >
-              {task.cat || 'No Cat'}
-            </span>
-            {/* SubCat Badges */}
-            {task.subCats.map((sub) => (
-              <span
-                key={sub}
-                className="px-1.5 py-0.5 text-[10px] text-neutral-400 bg-neutral-900 rounded border border-neutral-800"
-              >
-                {sub}
-              </span>
-            ))}
+        {/* タイトルとURLリンク */}
+        <div className="flex justify-between items-start mb-1">
+          <div className="font-bold text-base leading-tight pr-4">
+            {task.title}
           </div>
 
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-none">
             {/* 詳細ポップアップボタン */}
             <button
               onClick={() => setPopupTask(task)}
@@ -273,51 +287,72 @@ export default function TaskDashboard() {
           </div>
         </div>
 
-        <div className="font-bold mb-1 text-lg leading-tight">{task.title}</div>
-        <div className="text-xs text-neutral-500 mb-3 font-mono">
-          Status: {task.state}
-        </div>
-
-        {/* ★ 完了ボタン（ローディング表示対応） */}
-        <button
-          onClick={() => handleComplete(task.id)}
-          disabled={isProcessing}
-          className={`text-xs w-full py-2 rounded transition font-bold border 
-            ${
-              isProcessing
-                ? 'bg-red-900/50 text-red-300 border-red-800 cursor-not-allowed' // 処理中のスタイル
-                : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border-neutral-800' // 通常のスタイル
-            }`}
-        >
-          {isProcessing ? (
-            // ローディング表示
-            <div className="flex items-center justify-center space-x-2">
-              <svg
-                className="animate-spin h-4 w-4"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              <span>処理中...</span>
+        {/* Status と 完了ボタンを同一行に配置 */}
+        <div className="flex justify-between items-center mt-2">
+          {/* Status & Badges (左側) */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <div className="text-xs text-neutral-500 font-mono">
+              {task.state}
             </div>
-          ) : (
-            '完了 (Done)'
-          )}
-        </button>
+            <div className="flex gap-1 flex-wrap">
+              {/* Cat Badge */}
+              <span
+                className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded border ${style.badge}`}
+              >
+                {task.cat || 'No Cat'}
+              </span>
+              {/* SubCat Badges */}
+              {task.subCats.map((sub) => (
+                <span
+                  key={sub}
+                  className="px-1.5 py-0.5 text-[10px] text-neutral-400 bg-neutral-900 rounded border border-neutral-800"
+                >
+                  {sub}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* 完了ボタン (右側) */}
+          <button
+            onClick={() => handleComplete(task.id)}
+            disabled={isProcessing}
+            className={`flex-none text-xs py-1 px-3 rounded transition font-bold border 
+                ${
+                  isProcessing
+                    ? 'bg-red-900/50 text-red-300 border-red-800 cursor-not-allowed'
+                    : 'bg-green-900/30 hover:bg-green-900/50 text-green-300 border-green-800/50' // 目立つ色に変更
+                }`}
+          >
+            {isProcessing ? (
+              <div className="flex items-center justify-center space-x-1">
+                <svg
+                  className="animate-spin h-3 w-3"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <span>処理中</span>
+              </div>
+            ) : (
+              '完了'
+            )}
+          </button>
+        </div>
       </div>
     );
   };
@@ -477,28 +512,101 @@ export default function TaskDashboard() {
       {popupTask && (
         <div
           className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4"
-          onClick={() => setPopupTask(null)} // 背景クリックで閉じる
+          onClick={() => setPopupTask(null)}
         >
           <div
             className="bg-neutral-800 p-8 rounded-xl shadow-2xl max-w-lg w-full"
-            onClick={(e) => e.stopPropagation()} // ポップアップ内クリックで閉じない
+            onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-white mb-4">
               {popupTask.title}
             </h2>
+
+            {/* フォーム部分 */}
+            <form className="space-y-4 pt-4 border-t border-neutral-700">
+              {/* 1. ステータス変更ボタン */}
+              <div className="flex items-center gap-4">
+                <label className="text-neutral-400 font-semibold w-24">
+                  ステータス:
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {['INBOX', 'Waiting', 'Going'].map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      disabled={processingId === popupTask.id}
+                      onClick={() => handleUpdateTask(popupTask.id, { status })}
+                      className={`px-3 py-1 text-sm rounded transition font-semibold 
+                                    ${
+                                      popupTask.state === status
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                                    }
+                                    ${
+                                      processingId === popupTask.id
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : ''
+                                    }
+                                `}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                  {/* Done ボタンは完了処理に紐付ける */}
+                  <button
+                    type="button"
+                    disabled={processingId === popupTask.id}
+                    onClick={() => {
+                      handleComplete(popupTask.id);
+                      setPopupTask(null);
+                    }}
+                    className={`px-3 py-1 text-sm rounded font-semibold bg-green-700 text-white hover:bg-green-600 ${
+                      processingId === popupTask.id
+                        ? 'opacity-50 cursor-not-allowed'
+                        : ''
+                    }`}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. 日付変更フィールド */}
+              <div className="flex items-center gap-4">
+                <label
+                  htmlFor="task-date"
+                  className="text-neutral-400 font-semibold w-24"
+                >
+                  期限日:
+                </label>
+                <input
+                  id="task-date"
+                  type="date"
+                  value={popupTask.date || ''}
+                  disabled={processingId === popupTask.id}
+                  onChange={(e) =>
+                    handleUpdateTask(popupTask.id, { date: e.target.value })
+                  }
+                  className="bg-neutral-700 text-white p-2 rounded flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleUpdateTask(popupTask.id, { date: 'null' })
+                  }
+                  className="text-xs text-red-400 hover:text-red-300 transition"
+                >
+                  [クリア]
+                </button>
+              </div>
+            </form>
+            {/* 詳細情報 */}
             <div className="mt-6 pt-4 border-t border-neutral-700/50 space-y-2 text-neutral-400 text-sm">
               <p>
-                <strong>ステータス:</strong> {popupTask.state}
-              </p>
-              <p>
-                <strong>カテゴリー:</strong> {popupTask.cat}
-              </p>
-              <p>
-                <strong>サブカテゴリー:</strong>{' '}
-                {popupTask.subCats.join(', ') || 'N/A'}
-              </p>
-              <p>
-                <strong>期限:</strong> {popupTask.date || '日付未定'}
+                <strong>カテゴリー:</strong> {popupTask.cat}{' '}
+                {popupTask.subCats.length > 0
+                  ? `(${popupTask.subCats.join(', ')})`
+                  : ''}
               </p>
             </div>
 
