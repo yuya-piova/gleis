@@ -245,7 +245,7 @@ export default function TaskDashboard() {
           <div className="font-bold text-base leading-tight pr-4 flex items-center">
             {/* STATE_COLORS[task.state] に基づいて色が適用される */}
             <span
-              className={`w-2.5 h-2.5 rounded-full mr-2 ${
+              className={`w-2.5 h-2.5 rounded-full mr-2 flex-none ${
                 STATE_COLORS[task.state] || 'bg-neutral-500'
               }`}
               title={`Status: ${task.state}`}
