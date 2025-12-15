@@ -26,6 +26,13 @@ type TaskFilter = 'All' | 'Work';
 type PopupState = Task | null;
 
 export default function TaskDashboard() {
+  const STATE_COLORS: { [key: string]: string } = {
+    INBOX: 'bg-red-500', // 赤
+    Wrapper: 'bg-blue-500', // 青
+    Waiting: 'bg-yellow-500', // 黄色
+    Going: 'bg-purple-500', // 紫
+    Done: 'bg-green-500', // Done (参考として残します)
+  };
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
@@ -235,7 +242,15 @@ export default function TaskDashboard() {
         {/* タイトルとURLリンク */}
         <div className="flex justify-between items-start mb-1">
           {/* タイトル */}
-          <div className="font-bold text-base leading-tight pr-4">
+          <div className="font-bold text-base leading-tight pr-4 flex items-center">
+            {/* STATE_COLORS[task.state] に基づいて色が適用される */}
+            <span
+              className={`w-2.5 h-2.5 rounded-full mr-2 ${
+                STATE_COLORS[task.state] || 'bg-neutral-500'
+              }`}
+              title={`Status: ${task.state}`}
+            />
+
             {task.title}
           </div>
 
@@ -271,9 +286,6 @@ export default function TaskDashboard() {
         <div className="flex justify-between items-center mt-2">
           {/* Status & Badges (左側) */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-            <div className="text-xs text-neutral-500 font-mono">
-              {task.state}
-            </div>
             <div className="flex gap-1 flex-wrap">
               {/* Cat Badge */}
               <span
