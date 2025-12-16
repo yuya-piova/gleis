@@ -429,12 +429,11 @@ export default function TaskDashboard() {
 
             return (
               <div
-                // ★ 修正後の className を適用
                 className={`flex-none ${widthClass} bg-neutral-900/50 flex flex-col h-auto md:h-full`}
               >
                 <div className="p-3 border-b border-red-900/30 bg-red-900/10 sticky top-0 md:static">
                   <h3 className="font-bold text-red-400 flex justify-between items-center">
-                    Inbox / Overdue
+                    Overdue
                     <span className="text-xs bg-red-900 text-red-200 px-2 py-0.5 rounded-full">
                       {inboxTasks.length}
                     </span>
