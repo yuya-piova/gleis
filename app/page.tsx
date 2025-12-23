@@ -138,7 +138,7 @@ export default function TaskDashboard() {
     setProcessingId(popupTask.id);
 
     const isNew = popupTask.id === 'new';
-    const apiUrl = isNew ? '/api/tasks/create' : '/api/update-task';
+    const apiUrl = isNew ? '/api/create' : '/api/update-task';
     const payload = isNew
       ? { title: editTitle, date: editDate }
       : {
@@ -168,7 +168,7 @@ export default function TaskDashboard() {
     if (processingId) return;
     setProcessingId(id);
     try {
-      const res = await fetch('/api/tasks/complete', {
+      const res = await fetch('/api/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
@@ -299,7 +299,8 @@ export default function TaskDashboard() {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#171717] text-white font-sans selection:bg-blue-500 selection:text-white">
       {/* Header */}
-      <header className="flex-none p-4 border-b border-neutral-800 flex justify-between items-center bg-neutral-900/95 z-20">
+      <header className="flex-none p-4 border-b border-neutral-800 flex flex-wrap gap-y-4 justify-between items-center bg-neutral-900/95 z-20">
+        {/* 左側：タイトルエリア */}
         <div className="flex items-center gap-4">
           <div>
             <h1 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest">
@@ -313,10 +314,14 @@ export default function TaskDashboard() {
               </span>
             </div>
           </div>
+        </div>
 
+        {/* 右側：操作エリア（スマホではここが2行目として右寄せになる） */}
+        <div className="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-0">
+          {/* 新規追加ボタン */}
           <button
             onClick={() => setPopupTask(emptyTask)}
-            className="bg-blue-600 hover:bg-blue-700 text-white w-8 h-8 rounded-full flex items-center justify-center transition shadow-lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition shadow-lg shrink-0"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -330,6 +335,7 @@ export default function TaskDashboard() {
             </svg>
           </button>
 
+          {/* Todayボタン */}
           <button
             onClick={() => {
               if (todayRef.current) {
@@ -339,14 +345,15 @@ export default function TaskDashboard() {
                     todayRef.current.offsetLeft - p.offsetWidth / 2;
               }
             }}
-            className="text-white bg-neutral-800 hover:bg-neutral-700 px-3 py-1 rounded-full text-xs font-semibold"
+            className="text-white bg-neutral-800 hover:bg-neutral-700 px-4 py-2 rounded-full text-xs font-bold shrink-0"
           >
             Today
           </button>
 
+          {/* 設定ボタン */}
           <button
             onClick={() => setShowSettings(true)}
-            className="text-neutral-400 hover:text-white p-2 rounded-full transition"
+            className="text-neutral-400 hover:text-white p-2 rounded-full transition shrink-0"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -354,14 +361,16 @@ export default function TaskDashboard() {
               viewBox="0 0 24 24"
               strokeWidth="2"
               stroke="currentColor"
-              className="w-5 h-5"
+              className="w-6 h-6"
             >
               <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.562.342 1.22.565 1.884.661.173.025.346.045.52.06" />
             </svg>
           </button>
-        </div>
-        <div className="text-2xl font-black tracking-tighter leading-none">
-          {currentTime}
+
+          {/* 時刻表示（ここも同じエリアに入れることで、スマホでは時刻だけが一番右、ボタンがその左に並びます） */}
+          <div className="text-2xl font-black tracking-tighter leading-none min-w-[80px] text-right ml-2 sm:ml-4">
+            {currentTime}
+          </div>
         </div>
       </header>
 
