@@ -131,6 +131,38 @@ export default function TaskDashboard() {
     }
   }, [popupTask]);
 
+  // --- 画面スリープ抑制（Wake Lock API） ---
+  useEffect(() => {
+    let wakeLock: any = null;
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          console.log('Wake Lock is active');
+        }
+      } catch (err: any) {
+        console.error(`${err.name}, ${err.message}`);
+      }
+    };
+
+    requestWakeLock();
+
+    // タブが可視状態に戻った時に再リクエスト（ブラウザの仕様対策）
+    const handleVisibilityChange = async () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLock) wakeLock.release();
+    };
+  }, []);
+
   // --- 5. タスク処理関数 ---
 
   const handleSaveTask = async () => {
