@@ -13,6 +13,15 @@ export async function POST(req: Request) {
       Name: {
         title: [{ text: { content: title || '新規タスク' } }],
       },
+      State: {
+        status: { name: 'INBOX' },
+      },
+      Cat: {
+        multi_select: [{ name: 'Work' }],
+      },
+      SubCat: {
+        multi_select: [{ name: 'Task' }],
+      },
     };
     // 日付がある場合のみ追加
     if (date) {
@@ -20,10 +29,6 @@ export async function POST(req: Request) {
         date: { start: date },
       };
     }
-    // ステータスの設定
-    properties['State'] = {
-      status: { name: 'INBOX' },
-    };
 
     const response = await notion.pages.create({
       parent: { database_id: databaseId },
