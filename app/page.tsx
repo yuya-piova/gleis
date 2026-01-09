@@ -253,10 +253,8 @@ export default function TaskDashboard() {
       },
     };
     const style = colors[task.theme] || colors.gray;
-    const notionAppUrl = task.url.replace(
-      'https://www.notion.so/',
-      'notion://'
-    );
+    const notionAppUrl = task.url;
+    //.replace('https://www.notion.so/','notion://');
 
     return (
       <div
