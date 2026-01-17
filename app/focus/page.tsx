@@ -7,7 +7,9 @@ import {
   differenceInDays,
   startOfYear,
   endOfYear,
+  parseISO,
 } from 'date-fns';
+import { Target, Calendar, Hash, Activity } from 'lucide-react';
 
 type Task = {
   id: string;
@@ -21,7 +23,6 @@ export default function FocusPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // --- 今日の日付・進捗データ計算 ---
   const today = new Date();
   const yearStart = startOfYear(today);
   const yearEnd = endOfYear(today);
@@ -31,97 +32,125 @@ export default function FocusPage() {
   const weekNumber = getWeek(today, { weekStartsOn: 1 });
 
   useEffect(() => {
-    // APIから今日のタスクのみ取得（フィルタ条件: Date = today）
     const todayStr = format(today, 'yyyy-MM-dd');
     fetch(`/api/tasks?date=${todayStr}`)
       .then((res) => res.json())
       .then((data) => {
-        setTasks(data);
+        setTasks(Array.isArray(data) ? data : []);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   return (
     <div className="h-full bg-[#171717] flex flex-col md:flex-row overflow-hidden no-scrollbar">
-      {/* 左側：今日という日のデータ (モチベーター) */}
-      <div className="w-full md:w-80 p-8 border-b md:border-b-0 md:border-r border-neutral-800 flex flex-col gap-8 shrink-0">
-        <section>
-          <h2 className="text-neutral-500 text-xs font-bold uppercase tracking-widest mb-2">
-            Today
-          </h2>
-          <div className="text-4xl font-black">{format(today, 'MM.dd')}</div>
-          <div className="text-neutral-400 font-medium">
+      {/* 左側：スタッツパネル */}
+      <div className="w-full md:w-80 p-8 border-b md:border-b-0 md:border-r border-neutral-800 flex flex-col gap-10 shrink-0 bg-neutral-900/10">
+        <header>
+          <div className="flex items-center gap-2 text-blue-500 mb-2">
+            <Calendar size={16} />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+              Current Date
+            </span>
+          </div>
+          <div className="text-5xl font-black tracking-tighter mb-1">
+            {format(today, 'MM.dd')}
+          </div>
+          <div className="text-xl text-neutral-500 font-bold tracking-tight">
             {format(today, 'EEEE')}
           </div>
-        </section>
+        </header>
 
-        <section className="space-y-4">
-          <div>
-            <div className="flex justify-between text-xs font-bold mb-1">
-              <span className="text-neutral-500">YEAR PROGRESS</span>
-              <span className="text-blue-500">{yearProgress}%</span>
+        <section>
+          <div className="flex justify-between items-end mb-2">
+            <div className="flex items-center gap-2 text-neutral-500">
+              <Activity size={14} />
+              <span className="text-[10px] font-bold uppercase tracking-widest">
+                Year Progress
+              </span>
             </div>
-            <div className="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-600 transition-all duration-1000"
-                style={{ width: `${yearProgress}%` }}
-              />
-            </div>
+            <span className="text-sm font-mono font-bold text-blue-500">
+              {yearProgress}%
+            </span>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-neutral-900/50 p-3 rounded-xl border border-neutral-800">
-              <div className="text-neutral-500 text-[10px] font-bold">WEEK</div>
-              <div className="text-xl font-bold font-mono">#{weekNumber}</div>
-            </div>
-            <div className="bg-neutral-900/50 p-3 rounded-xl border border-neutral-800">
-              <div className="text-neutral-500 text-[10px] font-bold">DAY</div>
-              <div className="text-xl font-bold font-mono">{passedDays}</div>
-            </div>
+          <div className="h-2 w-full bg-neutral-800 rounded-full overflow-hidden p-[2px]">
+            <div
+              className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-1000 ease-out"
+              style={{ width: `${yearProgress}%` }}
+            />
           </div>
         </section>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-neutral-900/50 p-4 rounded-2xl border border-neutral-800 flex flex-col gap-1">
+            <div className="text-neutral-600 text-[9px] font-black uppercase flex items-center gap-1">
+              <Hash size={10} /> Week
+            </div>
+            <div className="text-2xl font-black font-mono">#{weekNumber}</div>
+          </div>
+          <div className="bg-neutral-900/50 p-4 rounded-2xl border border-neutral-800 flex flex-col gap-1">
+            <div className="text-neutral-600 text-[9px] font-black uppercase">
+              Day
+            </div>
+            <div className="text-2xl font-black font-mono">{passedDays}</div>
+          </div>
+        </div>
       </div>
 
-      {/* 右側：今日のタスク詳細リスト */}
-      <div className="flex-1 p-8 overflow-y-auto no-scrollbar">
-        <h2 className="text-neutral-500 text-xs font-bold uppercase tracking-widest mb-6">
-          Today's Focus
-        </h2>
+      {/* 右側：タスク詳細エリア */}
+      <div className="flex-1 p-8 md:p-12 overflow-y-auto no-scrollbar">
+        <div className="max-w-3xl">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-500">
+              <Target size={24} />
+            </div>
+            <h2 className="text-2xl font-black tracking-tight">
+              Focus on Tasks
+            </h2>
+          </div>
 
-        {loading ? (
-          <div className="text-neutral-600">Loading focus...</div>
-        ) : tasks.length === 0 ? (
-          <div className="text-neutral-700 py-10 italic">
-            No tasks for today.
-          </div>
-        ) : (
-          <div className="space-y-6 max-w-2xl">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                className="group relative flex flex-col gap-2 p-4 bg-neutral-900/30 rounded-2xl border border-neutral-800/50 hover:border-blue-900/50 transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-bold bg-neutral-800 px-2 py-0.5 rounded text-neutral-400">
-                      {task.cat}
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-32 bg-neutral-900/50 rounded-2xl animate-pulse"
+                />
+              ))}
+            </div>
+          ) : tasks.length === 0 ? (
+            <div className="py-20 text-center border-2 border-dashed border-neutral-900 rounded-3xl">
+              <p className="text-neutral-600 font-bold italic">
+                No focus tasks for today.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="group p-6 bg-neutral-900/40 rounded-3xl border border-neutral-800/50 hover:border-blue-500/30 transition-all duration-300"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="px-3 py-1 rounded-full bg-blue-600/10 text-blue-500 text-[10px] font-black uppercase tracking-widest border border-blue-600/20">
+                      {task.cat || 'No Cat'}
                     </span>
-                    <h3 className="font-bold text-lg text-neutral-200">
-                      {task.name}
-                    </h3>
+                    <span className="text-[10px] font-bold text-neutral-600 bg-neutral-800/50 px-2 py-1 rounded">
+                      {task.state}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-tighter">
-                    {task.state}
-                  </span>
+                  <h3 className="text-xl font-bold text-neutral-100 mb-3 group-hover:text-blue-400 transition-colors">
+                    {task.name}
+                  </h3>
+                  <p className="text-neutral-500 leading-relaxed text-sm">
+                    {task.summary ||
+                      'No summary available for this focus task.'}
+                  </p>
                 </div>
-                {/* Dashboardより詳細に：要約を表示 */}
-                <p className="text-sm text-neutral-500 leading-relaxed">
-                  {task.summary || 'No description provided.'}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

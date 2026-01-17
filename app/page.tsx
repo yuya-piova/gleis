@@ -13,7 +13,7 @@ import { ja } from 'date-fns/locale';
 // タスクの型定義
 type Task = {
   id: string;
-  title: string;
+  name: string;
   date: string | null;
   state: string;
   cat: string;
@@ -37,7 +37,7 @@ export default function TaskDashboard() {
 
   const emptyTask: Task = {
     id: 'new',
-    title: '',
+    name: '',
     date: format(new Date(), 'yyyy-MM-dd'),
     state: 'INBOX',
     cat: 'All',
@@ -132,7 +132,7 @@ export default function TaskDashboard() {
   // モーダルが開いた時に編集用ステートに値をセット
   useEffect(() => {
     if (popupTask) {
-      setEditTitle(popupTask.id === 'new' ? '' : popupTask.title);
+      setEditTitle(popupTask.id === 'new' ? '' : popupTask.name);
       setEditDate(popupTask.date);
       setEditStatus(popupTask.state);
     }
@@ -274,7 +274,7 @@ export default function TaskDashboard() {
                 STATE_COLORS[task.state] || 'bg-neutral-500'
               }`}
             />
-            {task.title}
+            {task.name}
           </div>
           <div className="flex gap-2 items-center flex-none">
             <a
