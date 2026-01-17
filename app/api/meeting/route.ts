@@ -10,7 +10,7 @@ export async function GET() {
       database_id: databaseId,
       filter: {
         and: [
-          { property: 'Cat', select: { equals: 'Work' } },
+          { property: 'Cat', multi_select: { contains: 'Work' } },
           { property: 'SubCat', multi_select: { contains: 'Meeting' } },
         ],
       },
