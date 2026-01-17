@@ -99,10 +99,11 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="group p-4 bg-neutral-900/50 border border-white/5 rounded-2xl cursor-pointer hover:border-blue-500/30 transition-all"
+      className="group relative p-4 bg-neutral-900/80 border border-white/5 rounded-2xl cursor-pointer hover:border-blue-500/40 hover:bg-neutral-800/50 transition-all duration-300 shadow-sm"
     >
+      {/* カテゴリに応じた左端のアクセントライン */}
       <div
-        className={`w-8 h-1 rounded-full mb-3 ${
+        className={`absolute left-0 top-4 bottom-4 w-1 rounded-r-full ${
           task.theme === 'blue'
             ? 'bg-blue-500'
             : task.theme === 'green'
@@ -110,9 +111,25 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
               : 'bg-neutral-700'
         }`}
       />
-      <h3 className="font-bold text-sm text-neutral-200 group-hover:text-blue-400 transition-colors line-clamp-2">
-        {task.name}
-      </h3>
+
+      <div className="pl-2">
+        <div className="flex justify-between items-start mb-2">
+          <span className="text-[9px] font-black uppercase tracking-widest text-neutral-500 group-hover:text-blue-400 transition-colors">
+            {task.cat}
+          </span>
+          {task.state === 'Doing' && (
+            <span className="flex h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+          )}
+        </div>
+        <h3 className="font-bold text-sm text-neutral-200 leading-snug group-hover:text-white transition-colors line-clamp-2">
+          {task.name}
+        </h3>
+        {task.summary && (
+          <p className="mt-2 text-[10px] text-neutral-500 line-clamp-1 italic">
+            {task.summary}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
