@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 
-// プロジェクト共通のタスク型
 export type Task = {
   id: string;
   name: string;
@@ -30,28 +29,38 @@ export default function TaskModal({
   onComplete,
   processingId,
 }: TaskModalProps) {
-  // 編集用の一時ステート（page.tsxから移動）
   const [editName, setEditName] = useState('');
   const [editDate, setEditDate] = useState<string | null>(null);
   const [editStatus, setEditStatus] = useState('');
 
-  // モーダルが開いた時に値をセット
   useEffect(() => {
     setEditName(task.id === 'new' ? '' : task.name);
     setEditDate(task.date);
     setEditStatus(task.state);
   }, [task]);
 
+  // 保存処理のハンドラー
   const handleSaveClick = async () => {
-    if (!editName || processingId !== null) return;
+    console.log('Save clicked. Name:', editName, 'Processing:', processingId); // デバッグログ
+
+    // ガード条件
+    if (!editName) {
+      console.log('Name is empty');
+      return;
+    }
+    if (processingId !== null) {
+      console.log('Still processing:', processingId);
+      return;
+    }
 
     try {
-      // 1. 保存を実行（app/page.tsx または app/focus/page.tsx の handleSaveTask が呼ばれる）
+      console.log('Starting API call via onSave...');
       await onSave(editName, editDate, editStatus);
-      // 2. 完了したらモーダルを閉じる
-      onClose();
+      console.log('Save successful. Closing modal.');
+      onClose(); // ここでモーダルを閉じる
     } catch (error) {
       console.error('Failed to save task:', error);
+      alert('保存中にエラーが発生しました。');
     }
   };
 
@@ -65,7 +74,6 @@ export default function TaskModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="space-y-5">
-          {/* Task Name Input */}
           <div className="flex flex-col gap-1">
             <label className="text-neutral-500 text-[10px] font-bold uppercase">
               Task Name
@@ -79,7 +87,6 @@ export default function TaskModal({
             />
           </div>
 
-          {/* Date Input */}
           <div className="flex flex-col gap-1">
             <label className="text-neutral-500 text-[10px] font-bold uppercase">
               Date
@@ -92,7 +99,6 @@ export default function TaskModal({
             />
           </div>
 
-          {/* Status Selection (Existing Task Only) */}
           {task.id !== 'new' && (
             <div className="flex flex-col gap-2">
               <label className="text-neutral-500 text-[10px] font-bold uppercase">
@@ -129,7 +135,6 @@ export default function TaskModal({
           )}
         </div>
 
-        {/* Action Buttons */}
         <div className="flex gap-2 mt-8">
           <button
             onClick={onClose}
@@ -138,11 +143,12 @@ export default function TaskModal({
             Cancel
           </button>
           <button
-            onClick={() => handleSaveClick}
+            type="button" // 明示的に type="button" を指定
+            onClick={handleSaveClick}
             disabled={!editName || processingId !== null}
             className="flex-[2] bg-blue-600 py-3 rounded-xl font-bold shadow-lg shadow-blue-900/20 disabled:opacity-50 text-white"
           >
-            {processingId === task.id ? 'Saving...' : 'Save Task'}
+            {processingId !== null ? 'Saving...' : 'Save Task'}
           </button>
         </div>
       </div>
