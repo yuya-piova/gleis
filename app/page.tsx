@@ -84,8 +84,8 @@ export default function TaskDashboard() {
   // ClientLayoutでの設定変更を検知して同期する
   useEffect(() => {
     const syncSettings = () => {
-      const savedFilter = localStorage.getItem('wocheFilter');
-      const savedCompact = localStorage.getItem('wocheCompactPast');
+      const savedFilter = localStorage.getItem('gleisFilter');
+      const savedCompact = localStorage.getItem('gleisCompactPast');
       if (savedFilter) setFilter(savedFilter as TaskFilter);
       if (savedCompact) setIsCompactPast(savedCompact === 'true');
     };
