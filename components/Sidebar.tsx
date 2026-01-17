@@ -28,7 +28,7 @@ export default function Sidebar({
 
   const navItems = [
     { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { label: 'Monthly', href: '/monthly', icon: Calendar },
+    { label: 'Focus', href: '/focus', icon: Rocket },
     { label: 'Meeting', href: '/meeting', icon: MessageSquare },
   ];
 
