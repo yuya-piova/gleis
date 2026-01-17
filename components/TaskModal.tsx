@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ExternalLink, Trash2, Check, Loader2 } from 'lucide-react';
 
-// プロジェクト全体で使う共通の型定義
+// プロジェクト共通のタスク型
 export type Task = {
   id: string;
   name: string;
@@ -12,157 +11,125 @@ export type Task = {
   cat: string;
   subCats: string[];
   theme: string;
-  summary: string;
   url: string;
 };
 
 interface TaskModalProps {
   task: Task;
   onClose: () => void;
-  onUpdate: (id: string, updatedData: Partial<Task>) => Promise<void>;
-  onDelete?: (id: string) => Promise<void>;
+  onSave: (name: string, date: string | null, status: string) => Promise<void>;
+  onComplete: (id: string) => Promise<void>;
+  processingId: string | null;
 }
 
 export default function TaskModal({
   task,
   onClose,
-  onUpdate,
-  onDelete,
+  onSave,
+  onComplete,
+  processingId,
 }: TaskModalProps) {
-  const [editName, setEditName] = useState(task.name);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  // 編集用の一時ステート（page.tsxから移動）
+  const [editName, setEditName] = useState('');
+  const [editDate, setEditDate] = useState<string | null>(null);
+  const [editStatus, setEditStatus] = useState('');
 
-  // タスクが切り替わったときに内部ステートをリセット
+  // モーダルが開いた時に値をセット
   useEffect(() => {
-    setEditName(task.name);
+    setEditName(task.id === 'new' ? '' : task.name);
+    setEditDate(task.date);
+    setEditStatus(task.state);
   }, [task]);
 
-  const handleSave = async () => {
-    if (!editName.trim() || editName === task.name) {
-      if (editName === task.name) onClose();
-      return;
-    }
-    setIsSaving(true);
-    await onUpdate(task.id, { name: editName });
-    setIsSaving(false);
-    onClose();
-  };
-
-  const handleDelete = async () => {
-    if (!onDelete) return;
-    setIsDeleting(true);
-    await onDelete(task.id);
-    setIsDeleting(false);
-    onClose();
-  };
-
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
       <div
-        className="bg-[#1A1A1A] border border-white/10 w-full max-w-lg rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+        className="bg-neutral-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-8 space-y-8">
-          {/* ヘッダーエリア */}
-          <div className="flex justify-between items-start">
-            <div className="flex gap-2">
-              <span
-                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                  task.theme === 'blue'
-                    ? 'bg-blue-600/10 text-blue-500 border-blue-600/20'
-                    : task.theme === 'green'
-                      ? 'bg-green-600/10 text-green-500 border-green-600/20'
-                      : 'bg-neutral-800 text-neutral-400 border-neutral-700'
-                }`}
-              >
-                {task.cat}
-              </span>
-              <span className="px-3 py-1 rounded-full bg-neutral-800 text-neutral-500 text-[10px] font-black uppercase tracking-widest border border-neutral-700">
-                {task.state}
-              </span>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-neutral-500 hover:text-white transition-colors p-1"
-            >
-              <X size={24} />
-            </button>
+        <div className="space-y-5">
+          {/* Task Name Input */}
+          <div className="flex flex-col gap-1">
+            <label className="text-neutral-500 text-[10px] font-bold uppercase">
+              Task Name
+            </label>
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="bg-neutral-700 text-white p-3 rounded-xl text-lg font-bold outline-none border-2 border-transparent focus:border-blue-500"
+              placeholder="タスクを入力..."
+            />
           </div>
 
-          {/* メイン編集エリア */}
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.2em] ml-1">
-                Task Name
-              </label>
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="w-full bg-transparent text-2xl font-bold text-white focus:outline-none focus:text-blue-400 transition-colors px-1"
-                placeholder="タスク名を入力..."
-                autoFocus
-              />
-            </div>
+          {/* Date Input */}
+          <div className="flex flex-col gap-1">
+            <label className="text-neutral-500 text-[10px] font-bold uppercase">
+              Date
+            </label>
+            <input
+              type="date"
+              value={editDate || ''}
+              onChange={(e) => setEditDate(e.target.value)}
+              className="bg-neutral-700 text-white p-3 rounded-xl outline-none"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.2em] ml-1">
-                Summary / Details
+          {/* Status Selection (Existing Task Only) */}
+          {task.id !== 'new' && (
+            <div className="flex flex-col gap-2">
+              <label className="text-neutral-500 text-[10px] font-bold uppercase">
+                Status
               </label>
-              <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 min-h-[100px]">
-                <p className="text-neutral-400 text-sm leading-relaxed whitespace-pre-wrap">
-                  {task.summary || '詳細な要約はありません。'}
-                </p>
+              <div className="flex flex-wrap gap-2">
+                {['INBOX', 'Wrapper', 'Waiting', 'Going'].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setEditStatus(s)}
+                    className={`px-3 py-1.5 text-xs rounded-lg font-bold transition ${
+                      editStatus === s
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-neutral-700 text-neutral-400'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+                <div className="w-px h-6 bg-neutral-700" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onComplete(task.id);
+                    onClose();
+                  }}
+                  className="px-3 py-1.5 text-xs rounded-lg font-bold bg-green-700 text-white"
+                >
+                  Done
+                </button>
               </div>
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* アクションエリア */}
-          <div className="flex flex-col gap-4 pt-2">
-            <div className="flex gap-3">
-              <a
-                href={task.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/5"
-              >
-                <ExternalLink size={18} />
-                <span>Notion</span>
-              </a>
-
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex-[2] bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-600/20"
-              >
-                {isSaving ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Check size={18} />
-                )}
-                <span>{isSaving ? '保存中...' : '変更を保存'}</span>
-              </button>
-            </div>
-
-            {onDelete && (
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="flex items-center justify-center gap-2 w-full py-2 text-red-500/40 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-colors group"
-              >
-                {isDeleting ? (
-                  <Loader2 size={12} className="animate-spin" />
-                ) : (
-                  <Trash2
-                    size={12}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  />
-                )}
-                <span>Delete Task</span>
-              </button>
-            )}
-          </div>
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-8">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 text-neutral-400 font-bold"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(editName, editDate, editStatus)}
+            disabled={!editName || processingId !== null}
+            className="flex-[2] bg-blue-600 py-3 rounded-xl font-bold shadow-lg shadow-blue-900/20 disabled:opacity-50 text-white"
+          >
+            {processingId === task.id ? 'Saving...' : 'Save Task'}
+          </button>
         </div>
       </div>
     </div>

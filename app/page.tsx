@@ -9,18 +9,8 @@ import {
   isBefore,
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
-
-// タスクの型定義
-type Task = {
-  id: string;
-  name: string;
-  date: string | null;
-  state: string;
-  cat: string;
-  subCats: string[];
-  theme: string;
-  url: string;
-};
+import TaskModal from '@/components/TaskModal'; // 追加
+import type { Task } from '@/components/TaskModal'; // 追加
 
 type TaskFilter = 'All' | 'Work';
 type PopupState = Task | null;
@@ -44,6 +34,7 @@ export default function TaskDashboard() {
     subCats: [],
     theme: 'gray',
     url: '',
+    summary: '', // 型定義に合わせて追加
   };
 
   // --- 2. ステート定義 ---
@@ -51,10 +42,7 @@ export default function TaskDashboard() {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
 
-  // 編集用の一時ステート
-  const [editName, setEditName] = useState('');
-  const [editDate, setEditDate] = useState<string | null>(null);
-  const [editStatus, setEditStatus] = useState('');
+  // ★ editName, editDate, editStatus は TaskModal 内で管理するため削除しました
 
   const [filter, setFilter] = useState<TaskFilter>(() => {
     if (typeof window !== 'undefined') {
@@ -129,41 +117,27 @@ export default function TaskDashboard() {
     localStorage.setItem('wocheCompactPast', isCompactPast.toString());
   }, [isCompactPast]);
 
-  // モーダルが開いた時に編集用ステートに値をセット
-  useEffect(() => {
-    if (popupTask) {
-      setEditName(popupTask.id === 'new' ? '' : popupTask.name);
-      setEditDate(popupTask.date);
-      setEditStatus(popupTask.state);
-    }
-  }, [popupTask]);
+  // ★ popupTask 監視用の useEffect は TaskModal 内に移動したため削除しました
 
-  // --- 画面スリープ抑制（Wake Lock API） ---
+  // --- 画面スリープ抑制 ---
   useEffect(() => {
     let wakeLock: any = null;
-
     const requestWakeLock = async () => {
       try {
         if ('wakeLock' in navigator) {
           wakeLock = await (navigator as any).wakeLock.request('screen');
-          console.log('Wake Lock is active');
         }
       } catch (err: any) {
         console.error(`${err.name}, ${err.message}`);
       }
     };
-
     requestWakeLock();
-
-    // タブが可視状態に戻った時に再リクエスト（ブラウザの仕様対策）
     const handleVisibilityChange = async () => {
       if (wakeLock !== null && document.visibilityState === 'visible') {
         await requestWakeLock();
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (wakeLock) wakeLock.release();
@@ -172,19 +146,24 @@ export default function TaskDashboard() {
 
   // --- 5. タスク処理関数 ---
 
-  const handleSaveTask = async () => {
+  // 引数を受け取るように変更
+  const handleSaveTask = async (
+    name: string,
+    date: string | null,
+    status: string,
+  ) => {
     if (!popupTask || processingId) return;
     setProcessingId(popupTask.id);
 
     const isNew = popupTask.id === 'new';
     const apiUrl = isNew ? '/api/create' : '/api/update-task';
     const payload = isNew
-      ? { name: editName, date: editDate }
+      ? { name, date }
       : {
           id: popupTask.id,
-          name: editName,
-          date: editDate,
-          status: editStatus,
+          name,
+          date,
+          status,
         };
 
     try {
@@ -214,6 +193,7 @@ export default function TaskDashboard() {
       });
       if (!res.ok) throw new Error('完了処理に失敗しました');
       setTasks((prev) => prev.filter((t) => t.id !== id));
+      await fetchTasks(); // 全体整合性のために再取得
     } catch (e) {
       console.error(e);
     } finally {
@@ -260,29 +240,24 @@ export default function TaskDashboard() {
       },
     };
     const style = colors[task.theme] || colors.gray;
-    const notionAppUrl = task.url;
-    //.replace('https://www.notion.so/','notion://');
 
     return (
       <div
         className={`bg-neutral-800 p-3 rounded-lg border-l-4 ${style.bg} shadow-sm hover:bg-neutral-700 transition relative group`}
       >
         <div className="flex justify-between items-start mb-1">
-          <div className="font-bold text-base leading-tight pr-4 flex items-center">
+          <div className="font-bold text-base leading-tight pr-4 flex items-center text-white">
             <span
-              className={`w-2.5 h-2.5 rounded-full mr-2 flex-none ${
-                STATE_COLORS[task.state] || 'bg-neutral-500'
-              }`}
+              className={`w-2.5 h-2.5 rounded-full mr-2 flex-none ${STATE_COLORS[task.state] || 'bg-neutral-500'}`}
             />
             {task.name}
           </div>
           <div className="flex gap-2 items-center flex-none">
             <a
-              href={notionAppUrl}
+              href={task.url}
               target="_blank"
               rel="noopener noreferrer"
               className="text-neutral-500 hover:text-white p-1 rounded"
-              title="Notionアプリで開く"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -335,16 +310,13 @@ export default function TaskDashboard() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-[#171717]">
-      {/* Main Board */}
       <main className="flex-1 overflow-x-auto overflow-y-hidden bg-black snap-x snap-mandatory scroll-smooth">
         <div className="flex flex-row h-full min-w-full divide-x divide-neutral-800">
           {/* Inbox Column */}
           {(() => {
             const inboxTasks = getInboxTasks();
-            const hasNoTasks = inboxTasks.length === 0;
-            let widthClass = 'w-80';
-            if (hasNoTasks && isCompactPast) widthClass = 'w-36';
-
+            let widthClass =
+              inboxTasks.length === 0 && isCompactPast ? 'w-36' : 'w-80';
             return (
               <div
                 key="inbox-column"
@@ -373,38 +345,31 @@ export default function TaskDashboard() {
 
           {/* Week Days */}
           {weekDays.map((day) => {
-            const isToday = isSameDay(day, today);
+            const isTodayDay = isSameDay(day, today);
             const isPast = day.getTime() < today.getTime();
             const dayTasks = getTasksForDay(day);
-            const hasNoTasks = dayTasks.length === 0;
-            let widthClass = 'w-72';
-            if (isPast && hasNoTasks && isCompactPast) widthClass = 'w-36';
+            let widthClass =
+              isPast && dayTasks.length === 0 && isCompactPast
+                ? 'w-36'
+                : 'w-72';
 
             return (
               <div
                 key={day.toISOString()}
-                ref={isToday ? todayRef : null}
-                className={`flex-none ${widthClass} flex flex-col h-full relative snap-start ${
-                  isToday ? 'bg-blue-900/10' : ''
-                }`}
+                ref={isTodayDay ? todayRef : null}
+                className={`flex-none ${widthClass} flex flex-col h-full relative snap-start ${isTodayDay ? 'bg-blue-900/10' : ''}`}
               >
                 <div
-                  className={`p-3 border-b border-neutral-800 ${
-                    isToday
-                      ? 'bg-blue-900/20 border-blue-500/30'
-                      : 'bg-neutral-900'
-                  }`}
+                  className={`p-3 border-b border-neutral-800 ${isTodayDay ? 'bg-blue-900/20 border-blue-500/30' : 'bg-neutral-900'}`}
                 >
                   <h3
-                    className={`font-bold text-sm ${
-                      isToday ? 'text-blue-300' : 'text-neutral-300'
-                    }`}
+                    className={`font-bold text-sm ${isTodayDay ? 'text-blue-300' : 'text-neutral-300'}`}
                   >
                     {format(day, 'EEE', { locale: ja })}
                     <span className="text-xs opacity-60 ml-1">
                       {format(day, 'M/d')}
                     </span>
-                    {isToday && (
+                    {isTodayDay && (
                       <span className="ml-2 text-[8px] bg-blue-500 text-white px-1.5 rounded uppercase">
                         Today
                       </span>
@@ -426,10 +391,10 @@ export default function TaskDashboard() {
         </div>
       </main>
 
-      {/* --- FAB (Floating Action Button) --- */}
+      {/* FAB */}
       <button
         onClick={() => setPopupTask(emptyTask)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-2xl transition-transform hover:scale-110 active:scale-95 z-50 md:bottom-10 md:right-10"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-2xl transition-transform hover:scale-110 active:scale-95 z-50"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -447,98 +412,18 @@ export default function TaskDashboard() {
         </svg>
       </button>
 
-      {/* Edit/Create Popup */}
+      {/* --- 切り出した詳細モーダル --- */}
       {popupTask && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          onClick={() => setPopupTask(null)}
-        >
-          <div
-            className="bg-neutral-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="space-y-5">
-              <div className="flex flex-col gap-1">
-                <label className="text-neutral-500 text-[10px] font-bold uppercase">
-                  Task Name
-                </label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="bg-neutral-700 text-white p-3 rounded-xl text-lg font-bold outline-none border-2 border-transparent focus:border-blue-500"
-                  placeholder="タスクを入力..."
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-neutral-500 text-[10px] font-bold uppercase">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={editDate || ''}
-                  onChange={(e) => setEditDate(e.target.value)}
-                  className="bg-neutral-700 text-white p-3 rounded-xl outline-none"
-                />
-              </div>
-
-              {popupTask.id !== 'new' && (
-                <div className="flex flex-col gap-2">
-                  <label className="text-neutral-500 text-[10px] font-bold uppercase">
-                    Status
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {['INBOX', 'Wrapper', 'Waiting', 'Going'].map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setEditStatus(s)}
-                        className={`px-3 py-1.5 text-xs rounded-lg font-bold transition ${
-                          editStatus === s
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-neutral-700 text-neutral-400'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                    <div className="w-px h-6 bg-neutral-700" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleComplete(popupTask.id);
-                        setPopupTask(null);
-                      }}
-                      className="px-3 py-1.5 text-xs rounded-lg font-bold bg-green-700 text-white"
-                    >
-                      Done
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2 mt-8">
-              <button
-                onClick={() => setPopupTask(null)}
-                className="flex-1 py-3 text-neutral-400 font-bold"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveTask}
-                disabled={!editName || processingId !== null}
-                className="flex-[2] bg-blue-600 py-3 rounded-xl font-bold shadow-lg shadow-blue-900/20 disabled:opacity-50"
-              >
-                {processingId ? 'Saving...' : 'Save Task'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <TaskModal
+          task={popupTask}
+          onClose={() => setPopupTask(null)}
+          onSave={handleSaveTask}
+          onComplete={handleComplete}
+          processingId={processingId}
+        />
       )}
 
-      {/* Settings Modal */}
+      {/* Settings Modal (ここも後ほど切り出し可能です) */}
       {showSettings && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
@@ -548,7 +433,7 @@ export default function TaskDashboard() {
             className="bg-neutral-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-6">Settings</h2>
+            <h2 className="text-xl font-bold mb-6 text-white">Settings</h2>
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-neutral-300">
@@ -556,9 +441,7 @@ export default function TaskDashboard() {
                 </span>
                 <button
                   onClick={() => setFilter(filter === 'All' ? 'Work' : 'All')}
-                  className={`px-4 py-2 rounded-full text-xs font-bold transition ${
-                    filter === 'All' ? 'bg-blue-600' : 'bg-green-600'
-                  }`}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition ${filter === 'All' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'}`}
                 >
                   {filter === 'All' ? 'All' : 'Work Only'}
                 </button>
@@ -569,9 +452,7 @@ export default function TaskDashboard() {
                 </span>
                 <button
                   onClick={() => setIsCompactPast(!isCompactPast)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold transition ${
-                    isCompactPast ? 'bg-blue-600' : 'bg-neutral-700'
-                  }`}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition ${isCompactPast ? 'bg-blue-600 text-white' : 'bg-neutral-700 text-neutral-400'}`}
                 >
                   {isCompactPast ? 'ON' : 'OFF'}
                 </button>
@@ -579,7 +460,7 @@ export default function TaskDashboard() {
             </div>
             <button
               onClick={() => setShowSettings(false)}
-              className="mt-8 w-full py-3 bg-neutral-700 rounded-xl font-bold"
+              className="mt-8 w-full py-3 bg-neutral-700 rounded-xl font-bold text-white"
             >
               Close
             </button>
