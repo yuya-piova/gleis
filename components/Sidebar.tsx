@@ -1,21 +1,20 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Rocket,
   LayoutDashboard,
-  Calendar,
-  MessageSquare,
-  Settings,
-  X, // 閉じるボタン用
+  Target,
+  Video,
+  Settings as SettingsIcon,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface SidebarProps {
   isOpenMobile: boolean;
   setIsOpenMobile: (open: boolean) => void;
-  openSettings: () => void; // 設定モーダルを開く関数
+  openSettings: () => void;
 }
 
 export default function Sidebar({
@@ -23,103 +22,75 @@ export default function Sidebar({
   setIsOpenMobile,
   openSettings,
 }: SidebarProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const pathname = usePathname();
 
-  const navItems = [
-    { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { label: 'Focus', href: '/focus', icon: Rocket },
-    { label: 'Meeting', href: '/meeting', icon: MessageSquare },
+  const menuItems = [
+    { name: 'Focus', icon: <Target size={20} />, path: '/focus' },
+    { name: 'Weekly', icon: <LayoutDashboard size={20} />, path: '/' },
+    { name: 'Meeting', icon: <Video size={20} />, path: '/meeting' },
   ];
 
   return (
     <>
-      {/* スマホ用オーバーレイ（メニューが開いている時だけ表示） */}
+      {/* モバイル用オーバーレイ */}
       {isOpenMobile && (
         <div
-          className="fixed inset-0 bg-black/60 z-[60] md:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] md:hidden"
           onClick={() => setIsOpenMobile(false)}
         />
       )}
 
+      {/* サイドバー本体 */}
       <aside
-        className={`fixed top-0 left-0 h-screen bg-[#1A1A1A] border-r border-white/5 z-[70] transition-all duration-300 ease-in-out flex flex-col
-          ${isHovered ? 'md:w-60 shadow-2xl' : 'md:w-16'}
-          ${isOpenMobile ? 'w-64 translate-x-0' : 'w-64 -translate-x-full md:translate-x-0'}
-        `}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        className={`
+        fixed md:relative z-[70] h-full bg-[#1A1A1A] border-r border-neutral-800
+        flex flex-col items-center py-6 transition-all duration-300
+        ${isOpenMobile ? 'left-0 w-20' : '-left-20 md:left-0 md:w-16'}
+      `}
       >
-        {/* ヘッダーエリア */}
-        <div className="h-[72px] flex items-center justify-between px-4 border-b border-white/5 flex-none">
-          <div className="flex items-center gap-4">
-            <Rocket className="text-blue-500 w-8 h-8 flex-none" />
-            <span
-              className={`text-white font-bold text-xl transition-opacity duration-300 ${isHovered || isOpenMobile ? 'opacity-100' : 'opacity-0 md:hidden'}`}
-            >
-              LaunchPad
-            </span>
-          </div>
-          {/* スマホのみ閉じるボタン */}
-          <button
-            className="md:hidden text-gray-400"
-            onClick={() => setIsOpenMobile(false)}
-          >
-            <X size={24} />
-          </button>
+        {/* アプリロゴ (GleisのGを象徴的に) */}
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mb-10 shadow-lg shadow-blue-900/20">
+          <span className="text-white font-black text-xl">G</span>
         </div>
 
-        {/* ナビゲーションリンク */}
-        <nav className="flex-1 py-6 flex flex-col gap-2 overflow-hidden px-2">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
+        {/* メニューアイテム */}
+        <nav className="flex-1 flex flex-col gap-4 w-full px-2">
+          {menuItems.map((item) => {
+            const isActive = pathname === item.path;
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={item.name}
+                href={item.path}
                 onClick={() => setIsOpenMobile(false)}
-                className="relative group h-12 flex items-center px-3 rounded-lg transition-colors hover:bg-white/5"
+                className={`
+                  relative group flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300
+                  ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40'
+                      : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+                  }
+                `}
               >
-                {isActive && (
-                  <div className="absolute inset-0 bg-blue-600/10 border border-blue-600/20 rounded-lg" />
-                )}
-                <div
-                  className={`flex-none w-10 flex items-center justify-center z-10 ${isActive ? 'text-blue-400' : 'text-gray-400 group-hover:text-white'}`}
-                >
-                  <item.icon size={20} />
+                {item.icon}
+                {/* ツールチップ */}
+                <div className="absolute left-14 px-3 py-1 bg-neutral-800 text-white text-[10px] font-black uppercase tracking-widest rounded shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                  {item.name}
                 </div>
-                <span
-                  className={`ml-2 text-sm font-medium transition-all duration-300 ${isHovered || isOpenMobile ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 md:hidden'} ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}
-                >
-                  {item.label}
-                </span>
               </Link>
             );
           })}
         </nav>
 
-        {/* 最下部：設定ボタン */}
-        <div className="p-2 border-t border-white/5 flex-none">
-          <button
-            onClick={() => {
-              openSettings();
-              setIsOpenMobile(false);
-            }}
-            className="w-full h-12 flex items-center px-3 rounded-lg transition-colors hover:bg-white/5 text-gray-400 hover:text-white group"
-          >
-            <div className="flex-none w-10 flex items-center justify-center">
-              <Settings
-                size={20}
-                className="group-hover:rotate-45 transition-transform duration-500"
-              />
-            </div>
-            <span
-              className={`ml-2 text-sm font-medium transition-all duration-300 ${isHovered || isOpenMobile ? 'opacity-100' : 'opacity-0 md:hidden'}`}
-            >
-              Settings
-            </span>
-          </button>
-        </div>
+        {/* 下部：設定ボタン */}
+        <button
+          onClick={openSettings}
+          className="w-12 h-12 flex items-center justify-center text-neutral-600 hover:text-white hover:bg-neutral-800 rounded-2xl transition-all group relative"
+        >
+          <SettingsIcon size={20} />
+          <div className="absolute left-14 px-3 py-1 bg-neutral-800 text-white text-[10px] font-black uppercase tracking-widest rounded shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+            Settings
+          </div>
+        </button>
       </aside>
     </>
   );

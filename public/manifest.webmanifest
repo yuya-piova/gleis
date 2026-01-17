@@ -1,7 +1,7 @@
 {
-  "name": "Woche Task Dashboard",
-  "short_name": "Woche",
-  "description": "Notionと連携したタスクダッシュボード",
+  "name": "Gleis",
+  "short_name": "Gleis",
+  "description": "Notionと連携したデータ管理アプリ",
   "start_url": "/",
   "display": "standalone",
   "display_override": ["fullscreen"],

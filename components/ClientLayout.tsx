@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
-import SettingsModal from './SettingsModal'; // インポート
+import SettingsModal from './SettingsModal';
 import { Menu } from 'lucide-react';
 
 type TaskFilter = 'All' | 'Work';
@@ -12,6 +13,7 @@ export default function ClientLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const [isOpenMobile, setIsOpenMobile] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const [showSettings, setShowSettings] = useState(false);
@@ -88,10 +90,18 @@ export default function ClientLayout({
             </button>
 
             <div className="flex flex-col">
-              <h1 className="text-neutral-500 text-[9px] font-bold uppercase">
-                LaunchPad
+              <h1 className="text-blue-500 text-[10px] font-black uppercase tracking-[0.3em]">
+                Gleis
               </h1>
-              <span className="font-bold text-lg leading-none">Dashboard</span>
+              <span className="font-bold text-lg leading-none text-white tracking-tight">
+                {pathname === '/'
+                  ? 'Weekly'
+                  : pathname === '/focus'
+                    ? 'Focus'
+                    : pathname === '/meeting'
+                      ? 'Meeting'
+                      : 'Dashboard'}
+              </span>
             </div>
           </div>
 
@@ -103,7 +113,7 @@ export default function ClientLayout({
         <main className="flex-1 overflow-hidden">{children}</main>
       </div>
 
-      {/* 設定モーダルをここに配置することで全ページ共通化 */}
+      {/* 設定モーダル */}
       {showSettings && (
         <SettingsModal
           onClose={() => setShowSettings(false)}

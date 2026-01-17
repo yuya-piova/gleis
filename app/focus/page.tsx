@@ -59,7 +59,6 @@ export default function FocusPage() {
   const weekNumber = getWeek(today, { weekStartsOn: 1 });
 
   // タスク集計
-  const totalTasks = tasks.length;
   const remainingTasks = tasks.length;
 
   return (
@@ -119,14 +118,6 @@ export default function FocusPage() {
               <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">
                 Pending Tasks
               </span>
-            </div>
-            <div className="text-right">
-              <div className="flex items-center gap-1 text-blue-500">
-                <Circle size={10} className="fill-current opacity-20" />
-                <span className="text-xs font-bold font-mono">
-                  Total {totalTasks}
-                </span>
-              </div>
             </div>
           </div>
         </div>
