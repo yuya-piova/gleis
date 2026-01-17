@@ -1,20 +1,16 @@
 'use client';
-
-import { useState, useEffect } from 'react';
-import { format, addDays, startOfWeek, isToday } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import { useState, useEffect, useRef } from 'react';
 import {
-  Plus,
-  Settings as SettingsIcon,
-  X,
-  ExternalLink,
-  Check,
-  Trash2,
-  Moon,
-  Github,
-} from 'lucide-react';
+  format,
+  startOfWeek,
+  addDays,
+  isSameDay,
+  parseISO,
+  isBefore,
+} from 'date-fns';
+import { ja } from 'date-fns/locale';
 
-// --- 型定義 ---
+// タスクの型定義
 type Task = {
   id: string;
   name: string;
@@ -24,360 +20,572 @@ type Task = {
   subCats: string[];
   theme: string;
   url: string;
-  summary: string;
 };
 
-// --- 設定モーダル（エラー回避のためファイル内に定義） ---
-function SettingsModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[200] animate-in fade-in duration-200">
-      <div className="bg-[#1A1A1A] border border-white/10 w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="p-8 space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-black flex items-center gap-2">
-              <SettingsIcon size={20} className="text-blue-500" />
-              Settings
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-neutral-500 hover:text-white transition-colors"
-            >
-              <X size={24} />
-            </button>
-          </div>
+type TaskFilter = 'All' | 'Work';
+type PopupState = Task | null;
 
-          <div className="space-y-4">
-            <div className="p-4 bg-white/5 rounded-2xl flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Moon size={18} className="text-neutral-400" />
-                <span className="text-sm font-bold text-neutral-200">
-                  Dark Mode
-                </span>
-              </div>
-              <div className="w-10 h-5 bg-blue-600 rounded-full flex items-center px-1">
-                <div className="w-3 h-3 bg-white rounded-full ml-auto" />
-              </div>
-            </div>
+export default function TaskDashboard() {
+  // --- 1. 定数・初期値定義 ---
+  const STATE_COLORS: { [key: string]: string } = {
+    INBOX: 'bg-red-500',
+    Wrapper: 'bg-blue-500',
+    Waiting: 'bg-yellow-500',
+    Going: 'bg-purple-500',
+    Done: 'bg-green-500',
+  };
 
-            <div className="p-4 bg-white/5 rounded-2xl flex items-center justify-between opacity-50">
-              <div className="flex items-center gap-3">
-                <Github size={18} className="text-neutral-400" />
-                <span className="text-sm font-bold text-neutral-200">
-                  GitHub Sync
-                </span>
-              </div>
-              <span className="text-[10px] font-black bg-neutral-800 px-2 py-1 rounded text-neutral-500">
-                SOON
-              </span>
-            </div>
-          </div>
+  const emptyTask: Task = {
+    id: 'new',
+    name: '',
+    date: format(new Date(), 'yyyy-MM-dd'),
+    state: 'INBOX',
+    cat: 'All',
+    subCats: [],
+    theme: 'gray',
+    url: '',
+  };
 
-          <button
-            onClick={onClose}
-            className="w-full bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-4 rounded-2xl transition-all active:scale-95"
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function Dashboard() {
+  // --- 2. ステート定義 ---
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [editName, setEditName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState('');
 
+  // 編集用の一時ステート
+  const [editName, setEditName] = useState('');
+  const [editDate, setEditDate] = useState<string | null>(null);
+  const [editStatus, setEditStatus] = useState('');
+
+  const [filter, setFilter] = useState<TaskFilter>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('wocheFilter') as TaskFilter) || 'All';
+    }
+    return 'All';
+  });
+
+  const [isCompactPast, setIsCompactPast] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('wocheCompactPast');
+      return stored === 'true';
+    }
+    return false;
+  });
+
+  const [popupTask, setPopupTask] = useState<PopupState>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const todayRef = useRef<HTMLDivElement>(null);
+
+  const today = new Date();
+  const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
+  const weekDays = Array.from({ length: 7 }, (_, i) =>
+    addDays(startOfCurrentWeek, i),
+  );
+
+  // --- 3. データ取得 ---
   const fetchTasks = async () => {
     try {
       const res = await fetch('/api/tasks');
+      if (!res.ok) throw new Error('Failed');
       const data = await res.json();
-      setTasks(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
+      setTasks(data);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
+  // --- 4. useEffect ---
   useEffect(() => {
     fetchTasks();
+    const timer = setInterval(() => {
+      setCurrentTime(
+        new Date().toLocaleTimeString('ja-JP', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      );
+    }, 1000);
+    const poller = setInterval(fetchTasks, 60000);
+    return () => {
+      clearInterval(timer);
+      clearInterval(poller);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleOpenSettings = () => setShowSettings(true);
     window.addEventListener('open-settings', handleOpenSettings);
     return () =>
       window.removeEventListener('open-settings', handleOpenSettings);
   }, []);
 
-  const openModal = (task: Task) => {
-    setSelectedTask(task);
-    setEditName(task.name);
-  };
+  useEffect(() => {
+    localStorage.setItem('wocheFilter', filter);
+  }, [filter]);
+  useEffect(() => {
+    localStorage.setItem('wocheCompactPast', isCompactPast.toString());
+  }, [isCompactPast]);
+
+  // モーダルが開いた時に編集用ステートに値をセット
+  useEffect(() => {
+    if (popupTask) {
+      setEditName(popupTask.id === 'new' ? '' : popupTask.name);
+      setEditDate(popupTask.date);
+      setEditStatus(popupTask.state);
+    }
+  }, [popupTask]);
+
+  // --- 画面スリープ抑制（Wake Lock API） ---
+  useEffect(() => {
+    let wakeLock: any = null;
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          console.log('Wake Lock is active');
+        }
+      } catch (err: any) {
+        console.error(`${err.name}, ${err.message}`);
+      }
+    };
+
+    requestWakeLock();
+
+    // タブが可視状態に戻った時に再リクエスト（ブラウザの仕様対策）
+    const handleVisibilityChange = async () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLock) wakeLock.release();
+    };
+  }, []);
+
+  // --- 5. タスク処理関数 ---
 
   const handleSaveTask = async () => {
-    if (!selectedTask) return;
+    if (!popupTask || processingId) return;
+    setProcessingId(popupTask.id);
+
+    const isNew = popupTask.id === 'new';
+    const apiUrl = isNew ? '/api/create' : '/api/update-task';
+    const payload = isNew
+      ? { name: editName, date: editDate }
+      : {
+          id: popupTask.id,
+          name: editName,
+          date: editDate,
+          status: editStatus,
+        };
+
     try {
-      const res = await fetch('/api/tasks/update', {
-        method: 'PATCH',
+      const res = await fetch(apiUrl, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: selectedTask.id, name: editName }),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        setTasks(
-          tasks.map((t) =>
-            t.id === selectedTask.id ? { ...t, name: editName } : t,
-          ),
-        );
-        setSelectedTask(null);
-      }
-    } catch (err) {
-      console.error(err);
+      if (!res.ok) throw new Error('保存に失敗しました');
+      setPopupTask(null);
+      await fetchTasks();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'エラーが発生しました');
+    } finally {
+      setProcessingId(null);
     }
   };
 
-  const handleDeleteTask = async (id: string) => {
-    if (!confirm('このタスクを削除しますか？')) return;
+  const handleComplete = async (id: string) => {
+    if (processingId) return;
+    setProcessingId(id);
     try {
-      const res = await fetch(`/api/tasks/delete?id=${id}`, {
-        method: 'DELETE',
+      const res = await fetch('/api/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
       });
-      if (res.ok) {
-        setTasks(tasks.filter((t) => t.id !== id));
-        setSelectedTask(null);
-      }
-    } catch (err) {
-      console.error(err);
+      if (!res.ok) throw new Error('完了処理に失敗しました');
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setProcessingId(null);
     }
   };
 
-  const handleQuickAdd = async (date: string | null) => {
-    const name = window.prompt('新しいタスク名を入力してください');
-    if (!name) return;
-    const res = await fetch('/api/tasks/create', {
-      method: 'POST',
-      body: JSON.stringify({ name, date }),
-    });
-    if (res.ok) fetchTasks();
+  // --- 6. フィルタリングロジック ---
+  const filterTasksByCat = (tasksToFilter: Task[]) => {
+    if (filter === 'All') return tasksToFilter;
+    return tasksToFilter.filter((task) => task.cat === 'Work');
   };
 
-  const startDate = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const weekDays = [...Array(7)].map((_, i) => addDays(startDate, i));
+  const getTasksForDay = (day: Date) => {
+    const tasksForDay = tasks.filter((task) => {
+      if (!task.date) return false;
+      return isSameDay(parseISO(task.date), day);
+    });
+    return filterTasksByCat(tasksForDay);
+  };
+
+  const getInboxTasks = () => {
+    const inboxTasks = tasks.filter((task) => {
+      if (!task.date) return true;
+      return isBefore(parseISO(task.date), startOfCurrentWeek);
+    });
+    return filterTasksByCat(inboxTasks);
+  };
+
+  // --- 7. TaskCard ---
+  const TaskCard = ({ task }: { task: Task }) => {
+    const colors: any = {
+      blue: {
+        bg: 'border-blue-500',
+        badge: 'text-blue-200 bg-blue-900/50 border-blue-800',
+      },
+      green: {
+        bg: 'border-green-500',
+        badge: 'text-green-200 bg-green-900/50 border-green-800',
+      },
+      gray: {
+        bg: 'border-neutral-500',
+        badge: 'text-neutral-300 bg-neutral-800 border-neutral-700',
+      },
+    };
+    const style = colors[task.theme] || colors.gray;
+    const notionAppUrl = task.url;
+    //.replace('https://www.notion.so/','notion://');
+
+    return (
+      <div
+        className={`bg-neutral-800 p-3 rounded-lg border-l-4 ${style.bg} shadow-sm hover:bg-neutral-700 transition relative group`}
+      >
+        <div className="flex justify-between items-start mb-1">
+          <div className="font-bold text-base leading-tight pr-4 flex items-center">
+            <span
+              className={`w-2.5 h-2.5 rounded-full mr-2 flex-none ${
+                STATE_COLORS[task.state] || 'bg-neutral-500'
+              }`}
+            />
+            {task.name}
+          </div>
+          <div className="flex gap-2 items-center flex-none">
+            <a
+              href={notionAppUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-neutral-500 hover:text-white p-1 rounded"
+              title="Notionアプリで開く"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="2"
+                stroke="currentColor"
+                className="w-4 h-4"
+              >
+                <path d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div className="flex justify-between items-center mt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <div className="flex gap-1 flex-wrap">
+              <span
+                className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded border ${style.badge}`}
+              >
+                {task.cat || 'No Cat'}
+              </span>
+              {task.subCats.map((sub) => (
+                <span
+                  key={sub}
+                  className="px-1.5 py-0.5 text-[10px] text-neutral-400 bg-neutral-900 rounded border border-neutral-800"
+                >
+                  {sub}
+                </span>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={() => setPopupTask(task)}
+            className="flex-none text-xs py-1 px-3 rounded transition font-bold border bg-blue-600 hover:bg-blue-700 text-white border-blue-700/50 shadow-md"
+          >
+            詳細
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading)
+    return (
+      <div className="h-screen bg-black text-white flex items-center justify-center font-bold">
+        Loading...
+      </div>
+    );
 
   return (
-    <div className="h-full flex flex-col bg-[#171717] overflow-hidden">
-      <main className="flex-1 overflow-x-auto no-scrollbar flex p-6 gap-6">
-        {/* Inbox */}
-        <section className="w-72 shrink-0 flex flex-col gap-4">
-          <div className="flex items-center justify-between px-2">
-            <h2 className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.2em]">
-              Inbox
-            </h2>
-            <button
-              onClick={() => handleQuickAdd(null)}
-              className="text-neutral-500 hover:text-white transition-colors"
-            >
-              <Plus size={14} />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-20">
-            {tasks
-              .filter((t) => !t.date)
-              .map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onClick={() => openModal(task)}
-                />
-              ))}
-          </div>
-        </section>
+    <div className="flex flex-col h-full w-full overflow-hidden bg-[#171717]">
+      {/* Main Board */}
+      <main className="flex-1 overflow-x-auto overflow-y-hidden bg-black snap-x snap-mandatory scroll-smooth">
+        <div className="flex flex-row h-full min-w-full divide-x divide-neutral-800">
+          {/* Inbox Column */}
+          {(() => {
+            const inboxTasks = getInboxTasks();
+            const hasNoTasks = inboxTasks.length === 0;
+            let widthClass = 'w-80';
+            if (hasNoTasks && isCompactPast) widthClass = 'w-36';
 
-        {/* Weekly columns */}
-        {weekDays.map((day) => {
-          const dateStr = format(day, 'yyyy-MM-dd');
-          const dayTasks = tasks.filter((t) => t.date === dateStr);
-          const active = isToday(day);
-
-          return (
-            <section
-              key={dateStr}
-              className="w-72 shrink-0 flex flex-col gap-4"
-            >
+            return (
               <div
-                className={`px-2 py-1 rounded-xl transition-colors ${active ? 'bg-blue-600/5' : ''}`}
+                key="inbox-column"
+                className={`flex-none ${widthClass} bg-neutral-900/30 flex flex-col h-full snap-start`}
               >
-                <div
-                  className={`text-[10px] font-black uppercase tracking-widest ${active ? 'text-blue-500' : 'text-neutral-600'}`}
-                >
-                  {format(day, 'EEE', { locale: ja })}
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span
-                    className={`text-2xl font-black ${active ? 'text-white' : 'text-neutral-300'}`}
-                  >
-                    {format(day, 'dd')}
-                  </span>
-                  {active && (
-                    <span className="text-[10px] font-bold text-blue-500 italic uppercase">
-                      Today
+                <div className="p-3 border-b border-red-900/30 bg-red-900/10">
+                  <h3 className="font-bold text-red-400 flex justify-between items-center text-sm">
+                    Overdue
+                    <span className="text-[10px] bg-red-900 text-red-200 px-2 py-0.5 rounded-full">
+                      {inboxTasks.length}
                     </span>
+                  </h3>
+                </div>
+                <div className="p-3 space-y-3 overflow-y-auto flex-1">
+                  {inboxTasks.length === 0 ? (
+                    <div className="text-center text-neutral-700 text-xs py-8">
+                      No Tasks
+                    </div>
+                  ) : (
+                    inboxTasks.map((t) => <TaskCard key={t.id} task={t} />)
                   )}
                 </div>
               </div>
+            );
+          })()}
 
-              <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-20">
-                {dayTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onClick={() => openModal(task)}
-                  />
-                ))}
-                <button
-                  onClick={() => handleQuickAdd(dateStr)}
-                  className="w-full py-3 border-2 border-dashed border-neutral-800/30 rounded-[24px] text-neutral-800 hover:border-neutral-700 hover:text-neutral-600 transition-all flex items-center justify-center gap-2 group"
+          {/* Week Days */}
+          {weekDays.map((day) => {
+            const isToday = isSameDay(day, today);
+            const isPast = day.getTime() < today.getTime();
+            const dayTasks = getTasksForDay(day);
+            const hasNoTasks = dayTasks.length === 0;
+            let widthClass = 'w-72';
+            if (isPast && hasNoTasks && isCompactPast) widthClass = 'w-36';
+
+            return (
+              <div
+                key={day.toISOString()}
+                ref={isToday ? todayRef : null}
+                className={`flex-none ${widthClass} flex flex-col h-full relative snap-start ${
+                  isToday ? 'bg-blue-900/10' : ''
+                }`}
+              >
+                <div
+                  className={`p-3 border-b border-neutral-800 ${
+                    isToday
+                      ? 'bg-blue-900/20 border-blue-500/30'
+                      : 'bg-neutral-900'
+                  }`}
                 >
-                  <Plus size={14} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">
-                    Add Task
-                  </span>
-                </button>
+                  <h3
+                    className={`font-bold text-sm ${
+                      isToday ? 'text-blue-300' : 'text-neutral-300'
+                    }`}
+                  >
+                    {format(day, 'EEE', { locale: ja })}
+                    <span className="text-xs opacity-60 ml-1">
+                      {format(day, 'M/d')}
+                    </span>
+                    {isToday && (
+                      <span className="ml-2 text-[8px] bg-blue-500 text-white px-1.5 rounded uppercase">
+                        Today
+                      </span>
+                    )}
+                  </h3>
+                </div>
+                <div className="p-3 space-y-3 overflow-y-auto flex-1">
+                  {dayTasks.length === 0 ? (
+                    <div className="text-center text-neutral-700 text-xs py-8">
+                      No Tasks
+                    </div>
+                  ) : (
+                    dayTasks.map((t) => <TaskCard key={t.id} task={t} />)
+                  )}
+                </div>
               </div>
-            </section>
-          );
-        })}
+            );
+          })}
+        </div>
       </main>
 
-      {/* 詳細モーダル */}
-      {selectedTask && (
+      {/* --- FAB (Floating Action Button) --- */}
+      <button
+        onClick={() => setPopupTask(emptyTask)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-2xl transition-transform hover:scale-110 active:scale-95 z-50 md:bottom-10 md:right-10"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="3"
+          stroke="currentColor"
+          className="w-7 h-7"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 4.5v15m7.5-7.5h-15"
+          />
+        </svg>
+      </button>
+
+      {/* Edit/Create Popup */}
+      {popupTask && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200"
-          onClick={() => setSelectedTask(null)}
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setPopupTask(null)}
         >
           <div
-            className="bg-[#1A1A1A] border border-white/10 w-full max-w-lg rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+            className="bg-neutral-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-8 space-y-8">
-              <div className="flex justify-between items-start">
-                <div className="flex gap-2">
-                  <span
-                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${selectedTask.theme === 'blue' ? 'bg-blue-600/10 text-blue-500 border-blue-600/20' : 'bg-neutral-800 text-neutral-400 border-neutral-700'}`}
-                  >
-                    {selectedTask.cat}
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-neutral-800 text-neutral-500 text-[10px] font-black uppercase border border-neutral-700">
-                    {selectedTask.state}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setSelectedTask(null)}
-                  className="text-neutral-500 hover:text-white transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest ml-1">
+            <div className="space-y-5">
+              <div className="flex flex-col gap-1">
+                <label className="text-neutral-500 text-[10px] font-bold uppercase">
                   Task Name
                 </label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-transparent text-2xl font-bold text-white focus:outline-none focus:text-blue-400 transition-colors px-1"
+                  className="bg-neutral-700 text-white p-3 rounded-xl text-lg font-bold outline-none border-2 border-transparent focus:border-blue-500"
+                  placeholder="タスクを入力..."
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest ml-1">
-                  Summary
+              <div className="flex flex-col gap-1">
+                <label className="text-neutral-500 text-[10px] font-bold uppercase">
+                  Date
                 </label>
-                <div className="bg-white/[0.03] border border-white/5 rounded-[20px] p-5 min-h-[100px]">
-                  <p className="text-neutral-400 text-sm leading-relaxed">
-                    {selectedTask.summary || 'No summary available.'}
-                  </p>
-                </div>
+                <input
+                  type="date"
+                  value={editDate || ''}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="bg-neutral-700 text-white p-3 rounded-xl outline-none"
+                />
               </div>
 
-              <div className="flex flex-col gap-3 pt-2">
-                <div className="flex gap-3">
-                  <a
-                    href={selectedTask.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all border border-white/5"
-                  >
-                    <ExternalLink size={18} />
-                    <span>Notion</span>
-                  </a>
-                  <button
-                    onClick={handleSaveTask}
-                    className="flex-[2] bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-600/20"
-                  >
-                    <Check size={18} />
-                    <span>Save Changes</span>
-                  </button>
+              {popupTask.id !== 'new' && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-neutral-500 text-[10px] font-bold uppercase">
+                    Status
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {['INBOX', 'Wrapper', 'Waiting', 'Going'].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setEditStatus(s)}
+                        className={`px-3 py-1.5 text-xs rounded-lg font-bold transition ${
+                          editStatus === s
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-neutral-700 text-neutral-400'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                    <div className="w-px h-6 bg-neutral-700" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleComplete(popupTask.id);
+                        setPopupTask(null);
+                      }}
+                      className="px-3 py-1.5 text-xs rounded-lg font-bold bg-green-700 text-white"
+                    >
+                      Done
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteTask(selectedTask.id)}
-                  className="py-2 text-red-500/40 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-colors"
-                >
-                  Delete Task
-                </button>
-              </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 mt-8">
+              <button
+                onClick={() => setPopupTask(null)}
+                className="flex-1 py-3 text-neutral-400 font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTask}
+                disabled={!editName || processingId !== null}
+                className="flex-[2] bg-blue-600 py-3 rounded-xl font-bold shadow-lg shadow-blue-900/20 disabled:opacity-50"
+              >
+                {processingId ? 'Saving...' : 'Save Task'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 設定モーダル */}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-    </div>
-  );
-}
-
-// リッチな質感の TaskCard コンポーネント
-function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
-  return (
-    <div
-      onClick={onClick}
-      className="group relative p-5 bg-neutral-900/60 border border-white/5 rounded-[24px] cursor-pointer hover:border-blue-500/30 hover:bg-neutral-800/40 transition-all duration-300 shadow-xl"
-    >
-      <div
-        className={`absolute left-0 top-5 bottom-5 w-1 rounded-r-full transition-all group-hover:w-1.5 ${
-          task.theme === 'blue'
-            ? 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
-            : task.theme === 'green'
-              ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]'
-              : 'bg-neutral-700'
-        }`}
-      />
-
-      <div className="pl-3">
-        <div className="flex justify-between items-start mb-2">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500 group-hover:text-blue-400 transition-colors">
-            {task.cat}
-          </span>
-          {task.state === 'Doing' && (
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-            </span>
-          )}
+      {/* Settings Modal */}
+      {showSettings && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowSettings(false)}
+        >
+          <div
+            className="bg-neutral-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold mb-6">Settings</h2>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-neutral-300">
+                  表示フィルタ
+                </span>
+                <button
+                  onClick={() => setFilter(filter === 'All' ? 'Work' : 'All')}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition ${
+                    filter === 'All' ? 'bg-blue-600' : 'bg-green-600'
+                  }`}
+                >
+                  {filter === 'All' ? 'All' : 'Work Only'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-neutral-300">
+                  過去日の幅縮小
+                </span>
+                <button
+                  onClick={() => setIsCompactPast(!isCompactPast)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition ${
+                    isCompactPast ? 'bg-blue-600' : 'bg-neutral-700'
+                  }`}
+                >
+                  {isCompactPast ? 'ON' : 'OFF'}
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSettings(false)}
+              className="mt-8 w-full py-3 bg-neutral-700 rounded-xl font-bold"
+            >
+              Close
+            </button>
+          </div>
         </div>
-        <h3 className="font-bold text-[14px] text-neutral-200 leading-tight group-hover:text-white transition-colors line-clamp-2">
-          {task.name}
-        </h3>
-        {task.summary && (
-          <p className="mt-2 text-[10px] text-neutral-600 line-clamp-1 italic group-hover:text-neutral-500 transition-colors">
-            {task.summary}
-          </p>
-        )}
-      </div>
+      )}
     </div>
   );
 }
