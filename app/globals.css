@@ -1,7 +1,6 @@
 @import 'tailwindcss';
 
 :root {
-  /* 背景をDashboardのテーマカラーに固定 */
   --background: #171717;
   --foreground: #ededed;
 }
@@ -11,26 +10,36 @@
   --color-foreground: var(--foreground);
 }
 
-/* 全要素（*）に対してスクロールバーを非表示にする設定 */
-* {
-  /* Chrome, Safari, Edge, Opera */
-  &::-webkit-scrollbar {
-    display: none;
-  }
-  /* IE, Edge, Firefox */
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* --- スクロールバーを完全に消し去る設定 --- */
+
+/* 1. 全ての要素に対して直接指定（最優先） */
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
+/* 2. Firefox / IE / Edge 向けの非表示設定 */
+* {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* 3. bodyの基本設定 */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  /* body自体のスクロールを抑制（アプリ感を出すため） */
-  overflow: hidden;
+  overflow: hidden; /* body自体のスクロールを禁止 */
+  margin: 0;
+  padding: 0;
 }
 
-/* フォーム入力時のフォーカスリングなどを青に変更（お好みで） */
-input:focus {
-  outline: none;
+/* 4. メインコンテンツとMeetingテーブルのスクロールを確保しつつ消す */
+main,
+.overflow-auto,
+.overflow-x-auto,
+.overflow-y-auto {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
