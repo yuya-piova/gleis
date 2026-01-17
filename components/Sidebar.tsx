@@ -7,8 +7,6 @@ import {
   Target,
   Video,
   Settings as SettingsIcon,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -40,21 +38,27 @@ export default function Sidebar({
         />
       )}
 
-      {/* サイドバー本体 */}
+      {/* サイドバー本体: group/sidebar を追加し、hover:w-48 で広がるように設定 */}
       <aside
         className={`
-        fixed md:relative z-[70] h-full bg-[#1A1A1A] border-r border-neutral-800
-        flex flex-col items-center py-6 transition-all duration-300
-        ${isOpenMobile ? 'left-0 w-20' : '-left-20 md:left-0 md:w-16'}
+        fixed left-0 z-[70] h-full bg-[#1A1A1A] border-r border-neutral-800
+        flex flex-col py-6 transition-all duration-300 ease-in-out group/sidebar
+        ${isOpenMobile ? 'w-20' : 'w-0 md:w-16 md:hover:w-48'}
+        ${!isOpenMobile && 'overflow-hidden md:overflow-visible'}
       `}
       >
-        {/* アプリロゴ (GleisのGを象徴的に) */}
-        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mb-10 shadow-lg shadow-blue-900/20">
-          <span className="text-white font-black text-xl">G</span>
+        {/* アプリロゴ */}
+        <div className="flex items-center px-3 mb-10 overflow-hidden">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-900/20">
+            <span className="text-white font-black text-xl">G</span>
+          </div>
+          <span className="ml-4 font-black text-xl text-white opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+            Gleis
+          </span>
         </div>
 
         {/* メニューアイテム */}
-        <nav className="flex-1 flex flex-col gap-4 w-full px-2">
+        <nav className="flex-1 flex flex-col gap-2 w-full px-2">
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
             return (
@@ -63,7 +67,7 @@ export default function Sidebar({
                 href={item.path}
                 onClick={() => setIsOpenMobile(false)}
                 className={`
-                  relative group flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300
+                  flex items-center w-full h-12 rounded-2xl transition-all duration-300 overflow-hidden
                   ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40'
@@ -71,26 +75,36 @@ export default function Sidebar({
                   }
                 `}
               >
-                {item.icon}
-                {/* ツールチップ */}
-                <div className="absolute left-14 px-3 py-1 bg-neutral-800 text-white text-[10px] font-black uppercase tracking-widest rounded shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                  {item.name}
+                <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+                  {item.icon}
                 </div>
+                <span
+                  className={`
+                  ml-2 font-bold text-sm transition-all duration-300 whitespace-nowrap
+                  opacity-0 group-hover/sidebar:opacity-100
+                `}
+                >
+                  {item.name}
+                </span>
               </Link>
             );
           })}
         </nav>
 
         {/* 下部：設定ボタン */}
-        <button
-          onClick={openSettings}
-          className="w-12 h-12 flex items-center justify-center text-neutral-600 hover:text-white hover:bg-neutral-800 rounded-2xl transition-all group relative"
-        >
-          <SettingsIcon size={20} />
-          <div className="absolute left-14 px-3 py-1 bg-neutral-800 text-white text-[10px] font-black uppercase tracking-widest rounded shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-            Settings
-          </div>
-        </button>
+        <div className="px-2 w-full">
+          <button
+            onClick={openSettings}
+            className="flex items-center w-full h-12 text-neutral-600 hover:text-white hover:bg-neutral-800 rounded-2xl transition-all overflow-hidden"
+          >
+            <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+              <SettingsIcon size={20} />
+            </div>
+            <span className="ml-2 font-bold text-sm opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+              Settings
+            </span>
+          </button>
+        </div>
       </aside>
     </>
   );
