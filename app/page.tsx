@@ -80,7 +80,7 @@ export default function TaskDashboard() {
   const today = new Date();
   const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) =>
-    addDays(startOfCurrentWeek, i)
+    addDays(startOfCurrentWeek, i),
   );
 
   // --- 3. データ取得 ---
@@ -105,7 +105,7 @@ export default function TaskDashboard() {
         new Date().toLocaleTimeString('ja-JP', {
           hour: '2-digit',
           minute: '2-digit',
-        })
+        }),
       );
     }, 1000);
     const poller = setInterval(fetchTasks, 60000);
@@ -327,84 +327,8 @@ export default function TaskDashboard() {
     );
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#171717] text-white font-sans selection:bg-blue-500 selection:text-white">
-      {/* Header */}
-      <header className="flex-none p-4 border-b border-neutral-800 flex flex-wrap gap-y-4 justify-between items-center bg-neutral-900/95 z-20">
-        {/* 左側：タイトルエリア */}
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest">
-              My Tasks
-            </h1>
-            <div className="text-xl font-bold flex items-center gap-2">
-              <span>Dashboard</span>
-              <span className="text-[10px] bg-neutral-800 text-neutral-400 px-2 py-1 rounded">
-                {format(startOfCurrentWeek, 'MMM d')} -{' '}
-                {format(addDays(startOfCurrentWeek, 6), 'MMM d')}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 右側：操作エリア（スマホではここが2行目として右寄せになる） */}
-        <div className="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-0">
-          {/* 新規追加ボタン */}
-          <button
-            onClick={() => setPopupTask(emptyTask)}
-            className="bg-blue-600 hover:bg-blue-700 text-white w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition shadow-lg shrink-0"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="3"
-              stroke="currentColor"
-              className="w-5 h-5"
-            >
-              <path d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          </button>
-
-          {/* Todayボタン */}
-          <button
-            onClick={() => {
-              if (todayRef.current) {
-                const p = todayRef.current.closest('main');
-                if (p)
-                  p.scrollLeft =
-                    todayRef.current.offsetLeft - p.offsetWidth / 2;
-              }
-            }}
-            className="text-white bg-neutral-800 hover:bg-neutral-700 px-4 py-2 rounded-full text-xs font-bold shrink-0"
-          >
-            Today
-          </button>
-
-          {/* 設定ボタン */}
-          <button
-            onClick={() => setShowSettings(true)}
-            className="text-neutral-400 hover:text-white p-2 rounded-full transition shrink-0"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="2"
-              stroke="currentColor"
-              className="w-6 h-6"
-            >
-              <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.562.342 1.22.565 1.884.661.173.025.346.045.52.06" />
-            </svg>
-          </button>
-
-          {/* 時刻表示（ここも同じエリアに入れることで、スマホでは時刻だけが一番右、ボタンがその左に並びます） */}
-          <div className="text-2xl font-black tracking-tighter leading-none min-w-[80px] text-right ml-2 sm:ml-4">
-            {currentTime}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Board - スマホでも横スクロール固定 */}
+    <div className="flex flex-col h-full w-full overflow-hidden bg-[#171717]">
+      {/* Main Board */}
       <main className="flex-1 overflow-x-auto overflow-y-hidden bg-black snap-x snap-mandatory scroll-smooth">
         <div className="flex flex-row h-full min-w-full divide-x divide-neutral-800">
           {/* Inbox Column */}

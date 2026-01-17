@@ -1,25 +1,72 @@
 'use client';
 
 import Sidebar from './Sidebar';
+import { usePathname } from 'next/navigation';
+import { format, startOfWeek, addDays } from 'date-fns';
+import { useState, useEffect } from 'react';
 
 export default function ClientLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [currentTime, setCurrentTime] = useState('');
+  const today = new Date();
+  const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
+
+  useEffect(() => {
+    setCurrentTime(
+      new Date().toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    );
+    const timer = setInterval(() => {
+      setCurrentTime(
+        new Date().toLocaleTimeString('ja-JP', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      );
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#171717]">
-      {' '}
-      {/* 全体の背景色をDashboardと合わせる */}
-      {/* サイドバー: PCサイズ(md)以上でのみ表示 */}
-      <div className="hidden md:block">
+    <div className="flex h-screen bg-[#171717] overflow-hidden">
+      {/* サイドバー (PCのみ) */}
+      <div className="hidden md:block flex-none">
         <Sidebar />
       </div>
-      {/* メインコンテンツエリア */}
-      {/* PCサイズ以上では左に64px(w-16)のマージンを空ける */}
-      <main className="transition-all duration-300 md:ml-16 w-full h-full">
-        {children}
-      </main>
+
+      {/* メインエリア（ヘッダー + コンテンツ） */}
+      <div className="flex-1 flex flex-col min-w-0 md:ml-16 transition-all duration-300">
+        {/* ★ 共通ヘッダー：ここに移設 ★ */}
+        <header className="flex-none p-4 border-b border-neutral-800 flex flex-wrap gap-y-4 justify-between items-center bg-neutral-900/95 z-20">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest">
+                My Tasks
+              </h1>
+              <div className="text-xl font-bold flex items-center gap-2">
+                <span>LaunchPad</span>
+                <span className="text-[10px] bg-neutral-800 text-neutral-400 px-2 py-1 rounded">
+                  {format(startOfCurrentWeek, 'MMM d')} -{' '}
+                  {format(addDays(startOfCurrentWeek, 6), 'MMM d')}
+                </span>
+              </div>
+            </div>
+            {/* ページ独自の操作ボタンが必要な場合は後ほど「Portal」等で対応可能ですが、
+                まずはシンプルな共通ヘッダーにします */}
+          </div>
+          <div className="text-2xl font-black tracking-tighter leading-none">
+            {currentTime}
+          </div>
+        </header>
+
+        {/* ページの中身 */}
+        <main className="flex-1 overflow-hidden relative">{children}</main>
+      </div>
     </div>
   );
 }
