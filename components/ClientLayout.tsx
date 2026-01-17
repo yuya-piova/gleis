@@ -25,8 +25,8 @@ export default function ClientLayout({
   // 初期化時にLocalStorageから読み込む
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedFilter = localStorage.getItem('wocheFilter') as TaskFilter;
-      const savedCompact = localStorage.getItem('wocheCompactPast');
+      const savedFilter = localStorage.getItem('gleisFilter') as TaskFilter;
+      const savedCompact = localStorage.getItem('gleisCompactPast');
       if (savedFilter) setFilter(savedFilter);
       if (savedCompact) setIsCompactPast(savedCompact === 'true');
     }
@@ -35,13 +35,13 @@ export default function ClientLayout({
   // 設定変更時にLocalStorageへ保存し、カスタムイベントを発火して各ページに通知する
   const handleSetFilter = (newFilter: TaskFilter) => {
     setFilter(newFilter);
-    localStorage.setItem('wocheFilter', newFilter);
+    localStorage.setItem('gleisFilter', newFilter);
     window.dispatchEvent(new CustomEvent('settings-updated'));
   };
 
   const handleSetCompactPast = (val: boolean) => {
     setIsCompactPast(val);
-    localStorage.setItem('wocheCompactPast', val.toString());
+    localStorage.setItem('gleisCompactPast', val.toString());
     window.dispatchEvent(new CustomEvent('settings-updated'));
   };
 
