@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 // --- 1. PWA用メタデータ設定 ---
 export const metadata: Metadata = {
-  title: 'Woche LaunchPad',
+  title: 'Gleis',
   description: 'Task Dashboard',
   manifest: '/manifest.json', // 必須: マニフェストファイルの読み込み
 
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent', // ステータスバーを透過または黒に
-    title: 'Woche',
+    title: 'Gleis',
   },
 
   // アイコン設定（publicフォルダに配置されている場合、自動検出されることも多いですが明記推奨）
