@@ -1,32 +1,36 @@
 @import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* 背景をDashboardのテーマカラーに固定 */
+  --background: #171717;
+  --foreground: #ededed;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* 全要素（*）に対してスクロールバーを非表示にする設定 */
+* {
+  /* Chrome, Safari, Edge, Opera */
+  &::-webkit-scrollbar {
+    display: none;
   }
+  /* IE, Edge, Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-/* 2. スクロールバーの非表示固定 */
-/* Chrome, Safari, Opera */
-body::-webkit-scrollbar {
-  display: none;
-}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  /* body自体のスクロールを抑制（アプリ感を出すため） */
+  overflow: hidden;
+}
+
+/* フォーム入力時のフォーカスリングなどを青に変更（お好みで） */
+input:focus {
+  outline: none;
 }
