@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Target,
   Video,
+  BarChart3,
   Settings as SettingsIcon,
 } from 'lucide-react';
 
