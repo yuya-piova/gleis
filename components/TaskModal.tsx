@@ -41,8 +41,6 @@ export default function TaskModal({
 
   // 保存処理のハンドラー
   const handleSaveClick = async () => {
-    console.log('Save clicked. Name:', editName, 'Processing:', processingId); // デバッグログ
-
     // ガード条件
     if (!editName) {
       console.log('Name is empty');
@@ -54,9 +52,7 @@ export default function TaskModal({
     }
 
     try {
-      console.log('Starting API call via onSave...');
       await onSave(editName, editDate, editStatus);
-      console.log('Save successful. Closing modal.');
       onClose(); // ここでモーダルを閉じる
     } catch (error) {
       console.error('Failed to save task:', error);
