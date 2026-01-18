@@ -10,6 +10,8 @@ import {
   endOfWeek,
   parseISO,
   format,
+  subMonths,
+  addDays,
 } from 'date-fns';
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
@@ -90,9 +92,9 @@ export async function GET(req: Request) {
   } else {
     // デフォルト: 当月1日 〜 今週末
     const now = new Date();
-    startDate = format(startOfMonth(now), 'yyyy-MM-dd');
-    const weekend = endOfWeek(now, { weekStartsOn: 1 });
-    endDate = format(weekend, 'yyyy-MM-dd');
+    startDate = format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd');
+    const nextWeekend = endOfWeek(addDays(now, 7), { weekStartsOn: 1 });
+    endDate = format(nextWeekend, 'yyyy-MM-dd');
   }
 
   const filters: any[] = [
