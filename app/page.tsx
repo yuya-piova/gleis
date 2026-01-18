@@ -108,17 +108,16 @@ export default function FocusPage() {
           </div>
           <div className="flex items-end justify-between">
             <div className="flex flex-col">
-              <span className="text-4xl font-black text-white leading-none">
+              {/* 未完了数のみを大きく表示 */}
+              <span className="text-5xl font-black text-white leading-none">
                 {remainingTasks}
               </span>
-              <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">
-                Pending Tasks
+              <span className="text-[10px] text-neutral-600 font-bold uppercase mt-2 tracking-tighter">
+                Active Tasks Remaining
               </span>
             </div>
-            <div className="text-right text-blue-500">
-              <span className="text-xs font-bold font-mono">
-                Total {tasks.length}
-              </span>
+            <div className="text-blue-500/20">
+              <Circle size={40} strokeWidth={4} />
             </div>
           </div>
         </div>
