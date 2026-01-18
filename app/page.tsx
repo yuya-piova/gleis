@@ -11,11 +11,10 @@ import {
 import {
   Target,
   Calendar,
-  Hash,
   Activity,
   ChevronRight,
-  CheckCircle2,
   Circle,
+  ExternalLink,
 } from 'lucide-react';
 import TaskModal from '@/components/TaskModal';
 import type { Task } from '@/components/TaskModal';
@@ -49,7 +48,6 @@ export default function FocusPage() {
     fetchTasks();
   }, []);
 
-  // --- 統計用データ計算 ---
   const today = new Date();
   const yearStart = startOfYear(today);
   const yearEnd = endOfYear(today);
@@ -58,7 +56,6 @@ export default function FocusPage() {
   const yearProgress = ((passedDays / totalDaysInYear) * 100).toFixed(1);
   const weekNumber = getWeek(today, { weekStartsOn: 1 });
 
-  // タスク集計
   const remainingTasks = tasks.length;
 
   return (
@@ -105,7 +102,6 @@ export default function FocusPage() {
           </div>
         </section>
 
-        {/* タスク集計パネル */}
         <div className="bg-neutral-900/50 p-6 rounded-[24px] border border-neutral-800 flex flex-col gap-4">
           <div className="text-neutral-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
             <Target size={12} /> Today's Stats
@@ -119,14 +115,20 @@ export default function FocusPage() {
                 Pending Tasks
               </span>
             </div>
+            <div className="text-right text-blue-500">
+              <span className="text-xs font-bold font-mono">
+                Total {tasks.length}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* 右側：メインコンテンツエリア */}
-      <div className="flex-1 p-8 md:p-12 overflow-y-auto no-scrollbar">
+      <div className="flex-1 p-6 md:p-12 overflow-y-auto no-scrollbar">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-3 mb-8">
+          {/* モバイル表示でバナーを消す */}
+          <div className="hidden md:flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-500">
               <Target size={24} />
             </div>
@@ -151,37 +153,65 @@ export default function FocusPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               {tasks.map((task) => (
                 <div
                   key={task.id}
-                  onClick={() => setSelectedTask(task)}
-                  className="group p-6 bg-neutral-900/40 rounded-[28px] border border-neutral-800/50 hover:border-blue-500/30 transition-all duration-300 cursor-pointer shadow-xl"
+                  className="group p-5 md:p-6 bg-neutral-900/40 rounded-[24px] md:rounded-[28px] border border-neutral-800/50 hover:border-blue-500/30 transition-all duration-300 shadow-xl relative"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                        task.theme === 'blue'
-                          ? 'bg-blue-600/10 text-blue-500 border-blue-600/20'
-                          : task.theme === 'green'
-                            ? 'bg-green-600/10 text-green-500 border-green-600/20'
-                            : 'bg-neutral-800 text-neutral-400 border-neutral-700'
-                      }`}
-                    >
-                      {task.cat || 'No Cat'}
-                    </span>
-                    <ChevronRight
-                      size={16}
-                      className="text-neutral-700 group-hover:text-blue-500 transition-colors"
-                    />
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex flex-wrap gap-2">
+                      {/* Category Badge */}
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                          task.theme === 'blue'
+                            ? 'bg-blue-600/10 text-blue-500 border-blue-600/20'
+                            : task.theme === 'green'
+                              ? 'bg-green-600/10 text-green-500 border-green-600/20'
+                              : 'bg-neutral-800 text-neutral-400 border-neutral-700'
+                        }`}
+                      >
+                        {task.cat || 'No Cat'}
+                      </span>
+                      {/* Stateバッジ */}
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-neutral-800 text-neutral-500 border border-neutral-700">
+                        {task.state}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Notionリンクボタン */}
+                      {task.url && (
+                        <a
+                          href={task.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-neutral-600 hover:text-white transition-colors"
+                          onClick={(e) => e.stopPropagation()} // 親のクリックイベント（モーダル）を防止
+                        >
+                          <ExternalLink size={16} />
+                        </a>
+                      )}
+                      <div
+                        onClick={() => setSelectedTask(task)}
+                        className="p-2 text-neutral-700 group-hover:text-blue-500 transition-colors cursor-pointer"
+                      >
+                        <ChevronRight size={18} />
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-xl font-bold text-neutral-100 mb-3 group-hover:text-blue-400 transition-colors">
-                    {task.name}
-                  </h3>
-                  <p className="text-neutral-500 leading-relaxed text-sm line-clamp-2 italic">
-                    {task.summary ||
-                      'No summary available for this focus task.'}
-                  </p>
+
+                  <div
+                    onClick={() => setSelectedTask(task)}
+                    className="cursor-pointer"
+                  >
+                    <h3 className="text-lg md:text-xl font-bold text-neutral-100 mb-2 group-hover:text-blue-400 transition-colors">
+                      {task.name}
+                    </h3>
+                    <p className="text-neutral-500 leading-relaxed text-xs md:text-sm line-clamp-2 italic">
+                      {task.summary || 'No summary available.'}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
