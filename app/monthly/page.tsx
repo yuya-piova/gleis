@@ -218,23 +218,31 @@ export default function MonthlyPage() {
                 >
                   {/* Work部 (青) - styleで背景色を固定 */}
                   <div
-                    className="w-full rounded-b-sm"
                     style={{
-                      flexGrow: d.workCount, // 数値に応じた比率で伸びる
+                      flexGrow: d.workCount,
                       flexBasis: 0,
                       backgroundColor: '#2563eb',
                     }}
+                    className={`w-full transition-all ${
+                      // Lifeがない、またはフィルタで非表示の時は「上」も丸くする
+                      filter === 'Work' || d.lifeCount === 0
+                        ? 'rounded-sm'
+                        : 'rounded-b-sm'
+                    }`}
                   />
 
                   {/* Life部 (緑) - styleで背景色を固定 */}
                   {filter === 'All' && d.lifeCount > 0 && (
                     <div
-                      className="w-full rounded-t-sm"
                       style={{
-                        flexGrow: d.lifeCount, // 数値に応じた比率で伸びる
+                        flexGrow: d.lifeCount,
                         flexBasis: 0,
                         backgroundColor: '#16a34a',
                       }}
+                      className={`w-full transition-all ${
+                        // Workがない時は「下」も丸くする
+                        d.workCount === 0 ? 'rounded-sm' : 'rounded-t-sm'
+                      }`}
                     />
                   )}
 
