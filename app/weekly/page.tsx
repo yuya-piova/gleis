@@ -206,7 +206,8 @@ export default function WeeklyPage() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-[#171717]">
-      <main className="flex-1 overflow-x-auto overflow-y-hidden bg-black snap-x snap-mandatory scroll-smooth">
+      {/* 修正2: メインエリアに flex-1 と min-h-0 を指定することで、親の高さに収まるようにする */}
+      <main className="flex-1 min-h-0 overflow-x-auto bg-black snap-x snap-mandatory scroll-smooth">
         <div className="flex flex-row h-full min-w-full divide-x divide-neutral-800">
           {/* Inbox (Overdue) Column */}
           {(() => {
@@ -217,7 +218,7 @@ export default function WeeklyPage() {
               <div
                 className={`flex-none ${widthClass} bg-neutral-900/30 flex flex-col h-full snap-start transition-all duration-300`}
               >
-                <div className="p-3 border-b border-red-900/30 bg-red-900/10">
+                <div className="p-3 border-b border-red-900/30 bg-red-900/10 shrink-0">
                   <h3 className="font-bold text-red-400 flex justify-between items-center text-sm">
                     Overdue{' '}
                     <span className="text-[10px] bg-red-900 text-red-200 px-2 py-0.5 rounded-full">
@@ -225,7 +226,8 @@ export default function WeeklyPage() {
                     </span>
                   </h3>
                 </div>
-                <div className="p-3 space-y-3 overflow-y-auto flex-1">
+                {/* 修正3: タスク一覧エリアに overflow-y-auto を指定。pb-20で下部に余白を確保 */}
+                <div className="p-3 space-y-3 overflow-y-auto flex-1 no-scrollbar pb-20">
                   {inboxTasks.map((t) => (
                     <TaskCard key={t.id} task={t} />
                   ))}
@@ -251,7 +253,7 @@ export default function WeeklyPage() {
                 className={`flex-none ${widthClass} flex flex-col h-full snap-start transition-all duration-300 ${isTodayDay ? 'bg-blue-900/10' : ''}`}
               >
                 <div
-                  className={`p-3 border-b border-neutral-800 ${isTodayDay ? 'bg-blue-900/20 border-blue-500/30' : 'bg-neutral-900'}`}
+                  className={`p-3 border-b border-neutral-800 shrink-0 ${isTodayDay ? 'bg-blue-900/20 border-blue-500/30' : 'bg-neutral-900'}`}
                 >
                   <h3
                     className={`font-bold text-sm ${isTodayDay ? 'text-blue-300' : 'text-neutral-300'}`}
@@ -262,7 +264,8 @@ export default function WeeklyPage() {
                     </span>
                   </h3>
                 </div>
-                <div className="p-3 space-y-3 overflow-y-auto flex-1">
+                {/* 修正4: 各カラムも同様に独立してスクロールするように設定 */}
+                <div className="p-3 space-y-3 overflow-y-auto flex-1 no-scrollbar pb-20">
                   {dayTasks.map((t) => (
                     <TaskCard key={t.id} task={t} />
                   ))}
