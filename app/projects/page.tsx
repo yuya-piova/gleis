@@ -23,10 +23,15 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
+  // 日付文字列から YYYY-MM-DD のみを抽出するヘルパー
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return 'No Date';
+    return dateStr.split('T')[0];
+  };
+
   const fetchTasks = async () => {
     setLoading(true);
     try {
-      // API側でフィルタリング済み
       const res = await fetch(`/api/tasks?fiscalYear=${currentFY}&catTag=PRJ`);
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
@@ -151,11 +156,11 @@ export default function ProjectsPage() {
                         </h3>
                         <div className="flex items-center gap-2 text-neutral-500 text-xs font-mono">
                           <Calendar size={12} />
-                          {task.date || 'No Date'}
+                          {/* 修正2: 日付整形 */}
+                          {formatDate(task.date)}
                         </div>
                       </div>
 
-                      {/* 修正1: PRJ削除。左下にSubCat、右下にState */}
                       <div className="mt-4 flex items-end justify-between border-t border-neutral-800 pt-3">
                         <div className="flex flex-wrap gap-1">
                           {task.subCats.map((sub) => (
@@ -189,19 +194,17 @@ export default function ProjectsPage() {
                     </span>
                   </div>
 
-                  {/* 修正2: 取り消し線やグレーアウトを廃止、視認性をActiveに近づける */}
                   <div className="space-y-2">
                     {doneTasks.map((task) => (
                       <div
                         key={task.id}
-                        className="flex items-center gap-4 p-3 rounded-xl border border-neutral-800 bg-neutral-900/30 text-neutral-200"
+                        className="flex items-center gap-4 p-3 rounded-xl border border-neutral-800 bg-neutral-900/30 text-neutral-200 group"
                       >
                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.4)]" />
                         <span className="flex-1 text-sm font-bold">
                           {task.name}
                         </span>
 
-                        {/* 日付の左にSubCatを表示 */}
                         <div className="flex gap-1">
                           {task.subCats.map((sub) => (
                             <span
@@ -212,9 +215,22 @@ export default function ProjectsPage() {
                             </span>
                           ))}
                         </div>
+                        {/* 修正2: 日付整形 */}
                         <span className="text-xs font-mono text-neutral-400">
-                          {task.date}
+                          {formatDate(task.date)}
                         </span>
+
+                        {/* 修正1: Notionリンクの追加 */}
+                        {task.url && (
+                          <a
+                            href={task.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-neutral-600 hover:text-white transition-colors"
+                          >
+                            <ExternalLink size={14} />
+                          </a>
+                        )}
                       </div>
                     ))}
                   </div>

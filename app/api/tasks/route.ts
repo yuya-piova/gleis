@@ -85,76 +85,44 @@ export async function GET(req: Request) {
   const fiscalYearParam = searchParams.get('fiscalYear');
   const catTagParam = searchParams.get('catTag');
 
-  let filterCondition: any;
+  let startDate: string;
+  let endDate: string;
   const now = new Date();
 
-  // 共通のCatTagフィルタ（あれば作成）
-  const catTagFilter = catTagParam
-    ? {
-        property: 'CatTag',
-        multi_select: { contains: catTagParam },
-      }
-    : null;
-
+  // --- 期間の設定 ---
   if (fiscalYearParam) {
-    // --- 年度指定モード (Projects等) ---
+    // 年度指定 (例: 2025 -> 2025-04-01 ~ 2026-03-31)
     const fy = parseInt(fiscalYearParam, 10);
-    const startDate = `${fy}-04-01`;
-    const endDate = `${fy + 1}-03-31`;
-
-    // 条件パーツの定義
-    const activeConditions = [
-      { property: 'State', status: { does_not_equal: 'Done' } },
-      { property: 'State', status: { does_not_equal: 'Canceled' } },
-    ];
-
-    const dateConditions = [
-      { property: 'Date', date: { on_or_after: startDate } },
-      { property: 'Date', date: { on_or_before: endDate } },
-    ];
-
-    if (catTagFilter) {
-      // ネスト制限回避のため、分配法則を適用して展開
-      // (Active AND Tag) OR (DateRange AND Tag)
-      filterCondition = {
-        or: [
-          { and: [...activeConditions, catTagFilter] },
-          { and: [...dateConditions, catTagFilter] },
-        ],
-      };
-    } else {
-      // Tagなし: (Active) OR (DateRange)
-      filterCondition = {
-        or: [{ and: activeConditions }, { and: dateConditions }],
-      };
-    }
+    startDate = `${fy}-04-01`;
+    endDate = `${fy + 1}-03-31`;
+  } else if (monthParam) {
+    // 月指定
+    const baseDate = parseISO(`${monthParam}-01`);
+    startDate = format(startOfMonth(baseDate), 'yyyy-MM-dd');
+    endDate = format(endOfMonth(baseDate), 'yyyy-MM-dd');
   } else {
-    // --- 通常モード (Focus / Weekly) ---
-    let startDate: string;
-    let endDate: string;
-
-    if (monthParam) {
-      const baseDate = parseISO(`${monthParam}-01`);
-      startDate = format(startOfMonth(baseDate), 'yyyy-MM-dd');
-      endDate = format(endOfMonth(baseDate), 'yyyy-MM-dd');
-    } else {
-      startDate = format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd');
-      const nextWeekend = endOfWeek(addDays(now, 7), { weekStartsOn: 1 });
-      endDate = format(nextWeekend, 'yyyy-MM-dd');
-    }
-
-    const conditions: any[] = [
-      { property: 'State', status: { does_not_equal: 'Canceled' } },
-      { property: 'Date', date: { on_or_after: startDate } },
-      { property: 'Date', date: { on_or_before: endDate } },
-    ];
-
-    if (catTagFilter) {
-      conditions.push(catTagFilter);
-    }
-
-    filterCondition = { and: conditions };
+    // デフォルト
+    startDate = format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd');
+    const nextWeekend = endOfWeek(addDays(now, 7), { weekStartsOn: 1 });
+    endDate = format(nextWeekend, 'yyyy-MM-dd');
   }
+
+  // --- フィルタ条件の構築 (厳格なAND条件) ---
+  const conditions: any[] = [
+    { property: 'State', status: { does_not_equal: 'Canceled' } }, // キャンセルは除外
+    { property: 'Date', date: { on_or_after: startDate } },
+    { property: 'Date', date: { on_or_before: endDate } },
+  ];
+
+  // CatTag指定がある場合 (PRJなど)
+  if (catTagParam) {
+    conditions.push({
+      property: 'CatTag',
+      multi_select: { contains: catTagParam },
+    });
+  }
+
+  const filterCondition = { and: conditions };
 
   // --- 全件取得ループ処理 ---
   let allResults: any[] = [];
